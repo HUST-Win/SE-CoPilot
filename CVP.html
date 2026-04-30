@@ -1,0 +1,857 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>量本利（CVP）分析工具</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600&family=Georgia:ital,wght@0,400;0,700;1,400&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            background: #eef2f5;
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            padding: 28px 20px;
+            color: #1a2c2c;
+        }
+
+        .dashboard {
+            max-width: 1600px;
+            margin: 0 auto;
+            background: #ffffff;
+            border-radius: 28px;
+            box-shadow: 0 20px 35px -12px rgba(0, 0, 0, 0.12);
+            overflow: hidden;
+            border: 1px solid #dce5e5;
+        }
+
+        .hero {
+            background: #1a3a3a;
+            padding: 1.2rem 2rem;
+            border-bottom: 3px solid #c9a03d;
+        }
+        .hero h1 {
+            font-family: 'Georgia', serif;
+            font-weight: 700;
+            font-size: 1.8rem;
+            color: #f4f7f3;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .hero p {
+            color: #cbdcdc;
+            font-size: 0.85rem;
+            margin-top: 8px;
+            font-style: italic;
+        }
+
+        /* 模式切换Tab */
+        .mode-tabs {
+            display: flex;
+            gap: 4px;
+            background: #f0f4f2;
+            padding: 6px;
+            border-radius: 40px;
+            margin-bottom: 20px;
+        }
+        .mode-tab {
+            flex: 1;
+            text-align: center;
+            padding: 8px 16px;
+            border-radius: 32px;
+            font-weight: 600;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            background: transparent;
+            color: #3c5a5a;
+        }
+        .mode-tab.active {
+            background: #1a3a3a;
+            color: white;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+        }
+        .mode-tab:hover:not(.active) {
+            background: #e2ece9;
+        }
+
+        .top-grid {
+            display: grid;
+            grid-template-columns: 1fr 1.2fr;
+            gap: 24px;
+            padding: 28px 28px 20px 28px;
+            background: #fefefe;
+        }
+
+        .card {
+            background: #ffffff;
+            border-radius: 20px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+            border: 1px solid #e2ecec;
+            padding: 1.4rem 1.6rem;
+        }
+        .card-title {
+            font-family: 'Georgia', serif;
+            font-weight: 600;
+            font-size: 1.3rem;
+            border-left: 5px solid #2c5f2d;
+            padding-left: 14px;
+            margin-bottom: 1.2rem;
+            color: #1a3a3a;
+        }
+
+        .param-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+        .param-item {
+            flex: 1;
+            min-width: 130px;
+        }
+        .param-item label {
+            display: block;
+            font-weight: 600;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #3c5a5a;
+            margin-bottom: 6px;
+        }
+        .input-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            background: #f9fbfb;
+            border: 1px solid #cfdfdd;
+            border-radius: 14px;
+            padding: 0 6px;
+        }
+        .input-wrapper input {
+            width: 100%;
+            border: none;
+            background: transparent;
+            padding: 10px 6px;
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 500;
+            font-size: 0.9rem;
+            outline: none;
+        }
+        .step-btn {
+            background: #eef3f0;
+            border: none;
+            font-size: 1.1rem;
+            font-weight: bold;
+            width: 30px;
+            border-radius: 10px;
+            cursor: pointer;
+            color: #2c5f2d;
+        }
+        .step-btn:hover { background: #d0e2d0; }
+
+        .results-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+        }
+        .metric-card {
+            background: #f9fcfb;
+            border-radius: 18px;
+            padding: 12px 14px;
+            border: 1px solid #e2edec;
+        }
+        .metric-label {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            font-weight: 600;
+            color: #4f6f6f;
+        }
+        .metric-value {
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 700;
+            font-size: 1.3rem;
+            color: #1a3a3a;
+            word-break: break-word;
+        }
+        .sub-text { font-size: 0.7rem; color: #588282; }
+
+        .charts-container {
+            padding: 0 28px 28px 28px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+        }
+        .chart-card {
+            background: #ffffff;
+            border-radius: 24px;
+            border: 1px solid #e2ecec;
+            padding: 1rem;
+        }
+        .chart-card h3 {
+            font-family: Georgia, serif;
+            font-size: 1rem;
+            margin-bottom: 12px;
+            text-align: center;
+        }
+        canvas {
+            width: 100%;
+            height: auto;
+            background: #ffffff;
+            border-radius: 16px;
+        }
+
+        .extra-panel {
+            padding: 0 28px 28px 28px;
+            display: grid;
+            grid-template-columns: 1.2fr 1fr;
+            gap: 24px;
+        }
+        .sens-card, .target-card, .nonlinear-card {
+            background: #fafefc;
+            border-radius: 20px;
+            border: 1px solid #e0edeb;
+            padding: 1.2rem 1.4rem;
+        }
+        .slider-group {
+            margin: 12px 0;
+        }
+        .slider-group label {
+            font-weight: 600;
+            font-size: 0.8rem;
+            display: flex;
+            justify-content: space-between;
+        }
+        input[type="range"] { width: 100%; margin: 8px 0; }
+
+        .explanation-box {
+            background: #f3f8f6;
+            border-radius: 16px;
+            padding: 1rem;
+            margin-top: 1rem;
+            border-left: 4px solid #2c5f2d;
+            font-size: 0.85rem;
+            line-height: 1.4;
+        }
+        .formula-footnote {
+            background: #fbf5e8;
+            padding: 10px 20px;
+            font-size: 0.7rem;
+            color: #5e6b6b;
+            border-top: 1px solid #e2e8e8;
+            text-align: center;
+        }
+        button {
+            background: #eef2ef;
+            border: 1px solid #cfe0dc;
+            border-radius: 30px;
+            padding: 6px 14px;
+            font-weight: 500;
+            cursor: pointer;
+        }
+        button:hover { background: #e2eae6; }
+
+        .coeff-input-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+            flex-wrap: wrap;
+        }
+        .coeff-item {
+            flex: 1;
+            text-align: center;
+        }
+        .coeff-item input {
+            width: 100%;
+            padding: 8px;
+            border-radius: 12px;
+            border: 1px solid #cfdfdd;
+            text-align: center;
+            font-family: monospace;
+        }
+        .points-input {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin: 12px 0;
+        }
+        .point-row {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        .point-row input {
+            flex: 1;
+            padding: 8px;
+            border-radius: 12px;
+            border: 1px solid #cfdfdd;
+        }
+        .badge-info {
+            background: #e5f0e5;
+            border-radius: 20px;
+            padding: 4px 10px;
+            font-size: 0.7rem;
+            display: inline-block;
+        }
+        @media (max-width: 950px) {
+            .top-grid, .charts-container, .extra-panel { grid-template-columns: 1fr; }
+        }
+        hr { margin: 12px 0; border-color: #e0ecea; }
+    </style>
+</head>
+<body>
+<div class="dashboard">
+    <div class="hero">
+        <h1>📊 量本利分析工具</h1>
+        <p>基于成本—销量—利润的盈亏平衡分析</p>
+    </div>
+
+    <!-- 模式切换 -->
+    <div style="padding: 20px 28px 0 28px;">
+        <div class="mode-tabs">
+            <div class="mode-tab" data-mode="linear">📈 线性模式 (传统CVP)</div>
+            <div class="mode-tab active" data-mode="quadratic">📉 非线性模式 (二次成本函数)</div>
+        </div>
+    </div>
+
+    <div class="top-grid">
+        <!-- 左侧参数区 -->
+        <div class="card">
+            <div class="card-title">📌 参数设定</div>
+            
+            <!-- 线性模式参数 (默认隐藏) -->
+            <div id="linearParams">
+                <div class="param-group">
+                    <div class="param-item"><label>固定成本 FC (¥)</label><div class="input-wrapper"><input type="number" id="fcInput" value="100000" step="1000"><button class="step-btn" data-target="fc" data-delta="-1000">−</button><button class="step-btn" data-target="fc" data-delta="1000">+</button></div></div>
+                    <div class="param-item"><label>单位变动成本 VC (¥)</label><div class="input-wrapper"><input type="number" id="vcInput" value="50" step="1"><button class="step-btn" data-target="vc" data-delta="-1">−</button><button class="step-btn" data-target="vc" data-delta="1">+</button></div></div>
+                    <div class="param-item"><label>销售单价 P (¥)</label><div class="input-wrapper"><input type="number" id="pInput" value="100" step="1"><button class="step-btn" data-target="p" data-delta="-1">−</button><button class="step-btn" data-target="p" data-delta="1">+</button></div></div>
+                    <div class="param-item"><label>当前销量 Q (件)</label><div class="input-wrapper"><input type="number" id="qInput" value="2500" step="500"><button class="step-btn" data-target="q" data-delta="-500">−</button><button class="step-btn" data-target="q" data-delta="500">+</button></div></div>
+                </div>
+            </div>
+
+            <!-- 非线性模式参数 -->
+            <div id="quadraticParams" style="display: block;">
+                <div class="param-group">
+                    <div class="param-item"><label>销售单价 P (¥)</label><div class="input-wrapper"><input type="number" id="pInputQuad" value="20" step="1"><button class="step-btn" data-target="pQuad" data-delta="-1">−</button><button class="step-btn" data-target="pQuad" data-delta="1">+</button></div></div>
+                    <div class="param-item"><label>当前销量 Q (件)</label><div class="input-wrapper"><input type="number" id="qInputQuad" value="1200" step="100"><button class="step-btn" data-target="qQuad" data-delta="-100">−</button><button class="step-btn" data-target="qQuad" data-delta="100">+</button></div></div>
+                </div>
+                
+                <!-- 三点拟合法 -->
+                <div style="margin-top: 12px;">
+                    <div style="font-weight:600; font-size:0.8rem; margin-bottom:8px;">🔢 方式一：三点拟合 (Q单位:件, TC单位:¥)</div>
+                    <div class="points-input" id="pointsContainer">
+                        <div class="point-row"><span style="width:30px;">点1</span><input type="number" id="q1" placeholder="Q1 (件)" value="600"><input type="number" id="tc1" placeholder="TC1 (¥)" value="104000"></div>
+                        <div class="point-row"><span style="width:30px;">点2</span><input type="number" id="q2" placeholder="Q2 (件)" value="1000"><input type="number" id="tc2" placeholder="TC2 (¥)" value="160000"></div>
+                        <div class="point-row"><span style="width:30px;">点3</span><input type="number" id="q3" placeholder="Q3 (件)" value="2000"><input type="number" id="tc3" placeholder="TC3 (¥)" value="370000"></div>
+                    </div>
+                    <button id="fitQuadraticBtn" style="margin-top:6px; width:100%;">📐 拟合二次函数</button>
+                </div>
+
+                <hr>
+
+                <!-- 系数直接输入 -->
+                <div style="margin-top: 8px;">
+                    <div style="font-weight:600; font-size:0.8rem; margin-bottom:8px;">🧮 方式二：系数直接输入 TC = a·Q² + b·Q + c</div>
+                    <div class="coeff-input-group">
+                        <div class="coeff-item"><label>a (Q²系数)</label><input type="number" id="coeffA" value="0.5" step="0.1"></div>
+                        <div class="coeff-item"><label>b (Q系数)</label><input type="number" id="coeffB" value="9" step="1"></div>
+                        <div class="coeff-item"><label>c (常数项)</label><input type="number" id="coeffC" value="20000" step="1000"></div>
+                    </div>
+                    <div class="badge-info" style="margin-top:5px;">💡 提示：Q单位需与单价单位一致(件)，注意金额单位统一为¥</div>
+                </div>
+            </div>
+            <div id="globalError" class="error-msg" style="margin-top: 8px; color:#bd3c2b; font-size:0.75rem;"></div>
+        </div>
+
+        <!-- 右侧结果区 -->
+        <div class="card">
+            <div class="card-title">📈 核心指标</div>
+            <div class="results-grid" id="resultsContainer">
+                <div class="metric-card"><div class="metric-label">📌 盈亏平衡点1 (件)</div><div class="metric-value" id="beQ1">—</div></div>
+                <div class="metric-card"><div class="metric-label">📌 盈亏平衡点2 (件)</div><div class="metric-value" id="beQ2">—</div></div>
+                <div class="metric-card"><div class="metric-label">💰 当前利润 (¥)</div><div class="metric-value" id="profitVal">—</div></div>
+                <div class="metric-card"><div class="metric-label">📊 边际贡献函数</div><div class="metric-value" id="cmFunc" style="font-size:1rem;">—</div></div>
+                <div class="metric-card"><div class="metric-label">🏆 利润最大点 (件)</div><div class="metric-value" id="maxProfitQ">—</div></div>
+                <div class="metric-card"><div class="metric-label">📈 最大利润 (¥)</div><div class="metric-value" id="maxProfitVal">—</div></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="charts-container">
+        <div class="chart-card"><h3>📉 盈亏平衡图 (收入/成本 vs 销量)</h3><canvas id="bepCanvas" width="500" height="350"></canvas></div>
+        <div class="chart-card"><h3>📊 利润-销量图 (Profit vs Quantity)</h3><canvas id="profitCanvas" width="500" height="350"></canvas></div>
+    </div>
+
+    <div class="extra-panel">
+        <div class="sens-card">
+            <div style="font-weight:700;">🎛️ 敏感性分析 (仅线性模式支持)</div>
+            <div class="slider-group"><label>单价变化 <span id="pSensVal">0%</span></label><input type="range" id="pSens" min="-30" max="30" value="0" step="1" disabled></div>
+            <div class="slider-group"><label>单位变动成本变化 <span id="vcSensVal">0%</span></label><input type="range" id="vcSens" min="-30" max="30" value="0" step="1" disabled></div>
+            <div class="explanation-box" id="sensExplain">非线性模式下敏感性分析需基于具体曲线，暂仅线性模式可用。</div>
+        </div>
+        <div class="target-card">
+            <div style="font-weight:700;">🎯 目标利润求解</div>
+            <div class="param-item" style="margin-top:10px;"><label>期望利润 π_target (¥)</label><input type="number" id="targetProfit" value="50000" step="5000" style="width:100%; padding:10px; border-radius:14px; border:1px solid #cfdfdd;"></div>
+            <div id="targetResult" class="explanation-box" style="margin-top:12px;">所需销量: — 件</div>
+            <button id="calcTargetBtn" style="margin-top:8px;">计算目标销量</button>
+        </div>
+    </div>
+
+    <div style="padding:0 28px 20px 28px;">
+        <div class="explanation-box" id="nlpExplanation">⚡ 实时解读将显示在此处...</div>
+    </div>
+    <div class="formula-footnote">
+        📐 线性: Q_BE = FC/(P-VC) | 二次成本: TC = aQ²+bQ+c, 保本点解二次方程, 利润最大点 Q* = (P-b)/(2a)
+    </div>
+</div>
+
+<script>
+    // ---------- 全局状态 ----------
+    let currentMode = 'quadratic';  // 'linear' or 'quadratic'
+    
+    // 线性模式基准值
+    let linearFC = 100000, linearVC = 50, linearP = 100, linearQ = 2500;
+    
+    // 二次模式参数
+    let quadP = 20, quadQ = 1200;        // P单位¥/件, Q单位件
+    let quadCoeff = { a: 0.5, b: 9, c: 20000 };  // TC = a*Q^2 + b*Q + c  (注意c单位¥)
+    
+    // DOM 元素
+    const linearParamsDiv = document.getElementById('linearParams');
+    const quadraticParamsDiv = document.getElementById('quadraticParams');
+    const modeTabs = document.querySelectorAll('.mode-tab');
+    const pSens = document.getElementById('pSens'), vcSens = document.getElementById('vcSens');
+    const pSensVal = document.getElementById('pSensVal'), vcSensVal = document.getElementById('vcSensVal');
+    
+    // 输入框绑定
+    const fcInput = document.getElementById('fcInput'), vcInput = document.getElementById('vcInput'), pInput = document.getElementById('pInput'), qInput = document.getElementById('qInput');
+    const pInputQuad = document.getElementById('pInputQuad'), qInputQuad = document.getElementById('qInputQuad');
+    const coeffA = document.getElementById('coeffA'), coeffB = document.getElementById('coeffB'), coeffC = document.getElementById('coeffC');
+    
+    // ------------------- 二次函数工具 -------------------
+    function evaluateTC(Q, a, b, c) {
+        return a * Q * Q + b * Q + c;
+    }
+    
+    function evaluateTR(P, Q) {
+        return P * Q;
+    }
+    
+    function evaluateProfit(P, a, b, c, Q) {
+        return P * Q - (a * Q * Q + b * Q + c);
+    }
+    
+    // 求解二次保本点: P*Q - (aQ² + bQ + c) = 0  =>  -a Q² + (P-b)Q - c = 0
+    function findBreakEvenPoints(P, a, b, c) {
+        const A = -a;
+        const B = P - b;
+        const C = -c;
+        const delta = B * B - 4 * A * C;
+        if (delta < 0) return [];
+        if (Math.abs(delta) < 1e-8) {
+            const x = -B / (2 * A);
+            return x > 0 ? [x] : [];
+        }
+        const sqrtDelta = Math.sqrt(delta);
+        const x1 = (-B + sqrtDelta) / (2 * A);
+        const x2 = (-B - sqrtDelta) / (2 * A);
+        const res = [];
+        if (x1 > 0) res.push(x1);
+        if (x2 > 0 && Math.abs(x2 - x1) > 1e-6) res.push(x2);
+        return res.sort((a,b)=>a-b);
+    }
+    
+    // 利润最大点: 导数为零 => P - (2aQ + b) = 0 => Q_max = (P - b) / (2a)
+    function findMaxProfitQ(P, a, b) {
+        if (a <= 0) return null;  // 开口向下才存在最大值
+        const q = (P - b) / (2 * a);
+        return q > 0 ? q : null;
+    }
+    
+    // 根据三点拟合二次系数 (解方程组)
+    function fitQuadraticFromPoints(q1, tc1, q2, tc2, q3, tc3) {
+        // 避免除零
+        const denominator = (q1 - q2)*(q1 - q3)*(q2 - q3);
+        if (Math.abs(denominator) < 1e-6) return null;
+        const a = (tc3*(q1 - q2) + tc2*(q3 - q1) + tc1*(q2 - q3)) / denominator;
+        const b = (tc3*(q2*q2 - q1*q1) + tc2*(q1*q1 - q3*q3) + tc1*(q3*q3 - q2*q2)) / denominator;
+        const c = (tc3*(q1*q2*(q1 - q2)) + tc2*(q3*q1*(q3 - q1)) + tc1*(q2*q3*(q2 - q3))) / denominator;
+        return { a, b, c };
+    }
+    
+    // 从三点拟合更新系数
+    function updateCoeffFromPoints() {
+        const q1 = parseFloat(document.getElementById('q1').value);
+        const tc1 = parseFloat(document.getElementById('tc1').value);
+        const q2 = parseFloat(document.getElementById('q2').value);
+        const tc2 = parseFloat(document.getElementById('tc2').value);
+        const q3 = parseFloat(document.getElementById('q3').value);
+        const tc3 = parseFloat(document.getElementById('tc3').value);
+        if (isNaN(q1) || isNaN(tc1) || isNaN(q2) || isNaN(tc2) || isNaN(q3) || isNaN(tc3)) {
+            return false;
+        }
+        const coeff = fitQuadraticFromPoints(q1, tc1, q2, tc2, q3, tc3);
+        if (!coeff) return false;
+        quadCoeff.a = coeff.a;
+        quadCoeff.b = coeff.b;
+        quadCoeff.c = coeff.c;
+        coeffA.value = quadCoeff.a.toFixed(4);
+        coeffB.value = quadCoeff.b.toFixed(4);
+        coeffC.value = quadCoeff.c.toFixed(2);
+        return true;
+    }
+    
+    function syncCoeffFromInputs() {
+        quadCoeff.a = parseFloat(coeffA.value);
+        quadCoeff.b = parseFloat(coeffB.value);
+        quadCoeff.c = parseFloat(coeffC.value);
+        if (isNaN(quadCoeff.a)) quadCoeff.a = 0;
+        if (isNaN(quadCoeff.b)) quadCoeff.b = 0;
+        if (isNaN(quadCoeff.c)) quadCoeff.c = 0;
+    }
+    
+    // ------------------- 线性模式计算 -------------------
+    function calculateLinear() {
+        if (linearP <= linearVC) return { error: "单价必须大于单位变动成本" };
+        const cm = linearP - linearVC;
+        const cmr = cm / linearP;
+        const beQ = linearFC / cm;
+        const beSales = linearFC / cmr;
+        const profit = linearQ * cm - linearFC;
+        const ms = linearQ - beQ;
+        const msr = linearQ === 0 ? 0 : ms / linearQ;
+        let msrEval = msr >= 0.3 ? "安全" : (msr >= 0.1 ? "较安全" : "危险");
+        let dol = profit > 0 ? (linearQ * cm / profit).toFixed(2) : "不适用";
+        return { valid: true, cm, cmr: cmr*100, beQ, beSales, profit, ms, msr: msr*100, msrEval, dol };
+    }
+    
+    // ------------------- 统一刷新 -------------------
+    function refreshAll() {
+        if (currentMode === 'linear') {
+            linearFC = parseFloat(fcInput.value);
+            linearVC = parseFloat(vcInput.value);
+            linearP = parseFloat(pInput.value);
+            linearQ = parseFloat(qInput.value);
+            if (isNaN(linearFC)) linearFC = 100000;
+            if (isNaN(linearVC)) linearVC = 50;
+            if (isNaN(linearP)) linearP = 100;
+            if (isNaN(linearQ)) linearQ = 2500;
+            
+            const stats = calculateLinear();
+            if (stats.error) {
+                document.getElementById('globalError').innerText = stats.error;
+                drawEmptyCharts();
+                return;
+            }
+            document.getElementById('globalError').innerText = "";
+            document.getElementById('beQ1').innerHTML = stats.beQ.toFixed(2);
+            document.getElementById('beQ2').innerHTML = "—";
+            document.getElementById('profitVal').innerHTML = "¥" + stats.profit.toFixed(2);
+            document.getElementById('cmFunc').innerHTML = `CM = ${stats.cm.toFixed(2)} ¥/件`;
+            if (stats.profit > 0) {
+                const maxQ = linearQ; // 线性无内点极值
+                document.getElementById('maxProfitQ').innerHTML = "无 (线性函数)";
+                document.getElementById('maxProfitVal').innerHTML = "—";
+            } else {
+                document.getElementById('maxProfitQ').innerHTML = "—";
+                document.getElementById('maxProfitVal').innerHTML = "—";
+            }
+            drawLinearCharts(stats);
+            updateLinearTargetProfit();
+            document.getElementById('nlpExplanation').innerHTML = `📖 线性模式：保本点${stats.beQ.toFixed(2)}件，当前利润¥${stats.profit.toFixed(2)}，安全边际率${stats.msr.toFixed(2)}%。`;
+        } 
+        else {  // quadratic模式
+            quadP = parseFloat(pInputQuad.value);
+            quadQ = parseFloat(qInputQuad.value);
+            if (isNaN(quadP)) quadP = 20;
+            if (isNaN(quadQ)) quadQ = 1200;
+            syncCoeffFromInputs();
+            
+            const a = quadCoeff.a, b = quadCoeff.b, c = quadCoeff.c;
+            if (a <= 0) {
+                document.getElementById('globalError').innerHTML = "⚠️ 二次项系数 a ≤ 0，成本函数开口向上或线性，可能无利润最大值或无保本点，请检查系数或使用三点拟合。";
+            } else {
+                document.getElementById('globalError').innerHTML = "";
+            }
+            
+            const bePoints = findBreakEvenPoints(quadP, a, b, c);
+            document.getElementById('beQ1').innerHTML = bePoints[0] ? bePoints[0].toFixed(2) : "无";
+            document.getElementById('beQ2').innerHTML = bePoints[1] ? bePoints[1].toFixed(2) : "无";
+            const profit = evaluateProfit(quadP, a, b, c, quadQ);
+            document.getElementById('profitVal').innerHTML = "¥" + profit.toFixed(2);
+            const marginalFunc = `CM(Q) = ${quadP.toFixed(2)} - (${(2*a).toFixed(4)}Q + ${b.toFixed(4)})`;
+            document.getElementById('cmFunc').innerHTML = marginalFunc;
+            const maxQ = findMaxProfitQ(quadP, a, b);
+            if (maxQ && maxQ > 0) {
+                document.getElementById('maxProfitQ').innerHTML = maxQ.toFixed(2);
+                const maxProfit = evaluateProfit(quadP, a, b, c, maxQ);
+                document.getElementById('maxProfitVal').innerHTML = "¥" + maxProfit.toFixed(2);
+            } else {
+                document.getElementById('maxProfitQ').innerHTML = "无最大值";
+                document.getElementById('maxProfitVal').innerHTML = "—";
+            }
+            drawQuadraticCharts();
+            updateQuadraticTargetProfit();
+            document.getElementById('nlpExplanation').innerHTML = `📖 非线性模式：当前Q=${quadQ}件，利润=${profit.toFixed(2)}元。保本点${bePoints.length}个。利润最大点=${maxQ ? maxQ.toFixed(2) : '无法确定'}。`;
+        }
+    }
+    
+    // 绘图: 线性模式
+    function drawLinearCharts(stats) {
+        const canvas = document.getElementById('bepCanvas');
+        const ctx = canvas.getContext('2d');
+        const w = canvas.clientWidth, h = canvas.clientHeight;
+        canvas.width = w; canvas.height = h;
+        ctx.clearRect(0, 0, w, h);
+        if (stats.error) return;
+        const maxQ = Math.max(stats.beQ * 2, linearQ * 1.5, 100);
+        const yMax = Math.max(linearFC + linearVC * maxQ, linearP * maxQ) * 1.05;
+        drawAxesAndLines(ctx, w, h, linearFC, linearVC, linearP, stats.beQ, linearQ, maxQ, yMax);
+        
+        // profit chart
+        const pCanvas = document.getElementById('profitCanvas');
+        const pCtx = pCanvas.getContext('2d');
+        pCanvas.width = pCanvas.clientWidth; pCanvas.height = pCanvas.clientHeight;
+        pCtx.clearRect(0, 0, pCanvas.width, pCanvas.height);
+        drawProfitLinear(pCtx, pCanvas.width, pCanvas.height, linearFC, linearVC, linearP, stats.beQ, linearQ, maxQ);
+    }
+    
+    function drawAxesAndLines(ctx, w, h, FC, VC, P, beQ, curQ, maxQ, yMax) {
+        const margin = { left: 50, right: 20, top: 20, bottom: 40 };
+        const plotW = w - margin.left - margin.right;
+        const plotH = h - margin.top - margin.bottom;
+        function mapX(q) { return margin.left + (q / maxQ) * plotW; }
+        function mapY(amt) { return margin.top + plotH - (amt / yMax) * plotH; }
+        ctx.beginPath();
+        ctx.moveTo(margin.left, margin.top); ctx.lineTo(margin.left, margin.top+plotH); ctx.lineTo(margin.left+plotW, margin.top+plotH);
+        ctx.strokeStyle = "#aaa"; ctx.stroke();
+        const beX = mapX(beQ);
+        ctx.fillStyle = "rgba(46, 125, 50, 0.12)";
+        ctx.fillRect(beX, margin.top, plotW - (beX - margin.left), plotH);
+        ctx.fillStyle = "rgba(211, 47, 47, 0.1)";
+        ctx.fillRect(margin.left, margin.top, beX - margin.left, plotH);
+        ctx.beginPath();
+        for(let x=0; x<=maxQ; x+= maxQ/100) { let y = P * x; if(x===0) ctx.moveTo(mapX(x), mapY(y)); else ctx.lineTo(mapX(x), mapY(y)); }
+        ctx.strokeStyle = "#2c6e2c"; ctx.lineWidth = 2.5; ctx.stroke();
+        ctx.beginPath();
+        for(let x=0; x<=maxQ; x+= maxQ/100) { let y = FC + VC * x; if(x===0) ctx.moveTo(mapX(x), mapY(y)); else ctx.lineTo(mapX(x), mapY(y)); }
+        ctx.strokeStyle = "#c9501c"; ctx.lineWidth = 2.5; ctx.stroke();
+        ctx.fillStyle = "#b22234"; ctx.beginPath(); ctx.arc(beX, mapY(P*beQ), 5, 0, 2*Math.PI); ctx.fill();
+        const curX = mapX(curQ); ctx.beginPath(); ctx.moveTo(curX, margin.top); ctx.lineTo(curX, margin.top+plotH); ctx.strokeStyle = "#2c5f2d"; ctx.stroke();
+    }
+    
+    function drawProfitLinear(ctx, w, h, FC, VC, P, beQ, curQ, maxQ) {
+        const margin = { left: 50, right: 20, top: 20, bottom: 40 };
+        const plotW = w - margin.left - margin.right;
+        const plotH = h - margin.top - margin.bottom;
+        const maxProfit = (P - VC) * maxQ - FC;
+        const minProfit = -FC;
+        function mapX(q) { return margin.left + (q / maxQ) * plotW; }
+        function mapY(profit) { 
+            const range = Math.max(Math.abs(maxProfit), Math.abs(minProfit), 1000);
+            const y0 = margin.top + plotH/2;
+            const scale = plotH/(2*range);
+            return y0 - profit * scale;
+        }
+        ctx.beginPath();
+        for(let x=0; x<=maxQ; x+= maxQ/200) {
+            let profit = (P - VC) * x - FC;
+            let y = mapY(profit);
+            if(x===0) ctx.moveTo(mapX(x), y); else ctx.lineTo(mapX(x), y);
+        }
+        ctx.strokeStyle = "#1f6392"; ctx.lineWidth = 2.8; ctx.stroke();
+        ctx.beginPath(); let zeroY = mapY(0); ctx.moveTo(margin.left, zeroY); ctx.lineTo(margin.left+plotW, zeroY);
+        ctx.strokeStyle = "#7f8c8d"; ctx.setLineDash([6,6]); ctx.stroke(); ctx.setLineDash([]);
+        const beX = mapX(beQ); ctx.fillStyle = "#b22234"; ctx.beginPath(); ctx.arc(beX, mapY(0), 5, 0, 2*Math.PI); ctx.fill();
+        const curX = mapX(curQ); ctx.beginPath(); ctx.moveTo(curX, margin.top); ctx.lineTo(curX, margin.top+plotH); ctx.strokeStyle = "#2c5f2d"; ctx.stroke();
+    }
+    
+    // 非线性绘图
+    function drawQuadraticCharts() {
+        const a = quadCoeff.a, b = quadCoeff.b, c = quadCoeff.c, P = quadP;
+        const maxDisplayQ = Math.max(quadQ * 2, 3000);
+        const points = findBreakEvenPoints(P, a, b, c);
+        const maxProfitQVal = findMaxProfitQ(P, a, b);
+        
+        const canvas = document.getElementById('bepCanvas');
+        const ctx = canvas.getContext('2d');
+        const w = canvas.clientWidth, h = canvas.clientHeight;
+        canvas.width = w; canvas.height = h;
+        ctx.clearRect(0, 0, w, h);
+        const margin = { left: 50, right: 20, top: 20, bottom: 40 };
+        const plotW = w - margin.left - margin.right;
+        const plotH = h - margin.top - margin.bottom;
+        let yMax = 1;
+        for(let x=0; x<=maxDisplayQ; x+=maxDisplayQ/50) {
+            let tc = evaluateTC(x, a, b, c);
+            let tr = P * x;
+            yMax = Math.max(yMax, tc, tr);
+        }
+        yMax *= 1.05;
+        function mapX(q) { return margin.left + (q / maxDisplayQ) * plotW; }
+        function mapY(amt) { return margin.top + plotH - (amt / yMax) * plotH; }
+        ctx.beginPath(); ctx.moveTo(margin.left, margin.top); ctx.lineTo(margin.left, margin.top+plotH); ctx.lineTo(margin.left+plotW, margin.top+plotH);
+        ctx.strokeStyle = "#aaa"; ctx.stroke();
+        ctx.beginPath();
+        for(let x=0; x<=maxDisplayQ; x+= maxDisplayQ/200) {
+            let tr = P * x;
+            if(x===0) ctx.moveTo(mapX(x), mapY(tr)); else ctx.lineTo(mapX(x), mapY(tr));
+        }
+        ctx.strokeStyle = "#2c6e2c"; ctx.lineWidth = 2.5; ctx.stroke();
+        ctx.beginPath();
+        for(let x=0; x<=maxDisplayQ; x+= maxDisplayQ/200) {
+            let tc = evaluateTC(x, a, b, c);
+            if(x===0) ctx.moveTo(mapX(x), mapY(tc)); else ctx.lineTo(mapX(x), mapY(tc));
+        }
+        ctx.strokeStyle = "#c9501c"; ctx.lineWidth = 2.5; ctx.stroke();
+        points.forEach(beq => {
+            if(beq>0 && beq<maxDisplayQ) {
+                const beX = mapX(beq); ctx.fillStyle = "#b22234"; ctx.beginPath(); ctx.arc(beX, mapY(P*beq), 5, 0, 2*Math.PI); ctx.fill();
+            }
+        });
+        const curX = mapX(quadQ); ctx.beginPath(); ctx.moveTo(curX, margin.top); ctx.lineTo(curX, margin.top+plotH); ctx.strokeStyle = "#2c5f2d"; ctx.stroke();
+        
+        // 利润图
+        const pCanvas = document.getElementById('profitCanvas');
+        const pCtx = pCanvas.getContext('2d');
+        pCanvas.width = pCanvas.clientWidth; pCanvas.height = pCanvas.clientHeight;
+        pCtx.clearRect(0, 0, pCanvas.width, pCanvas.height);
+        const marginP = { left: 50, right: 20, top: 20, bottom: 40 };
+        const plotWP = pCanvas.width - marginP.left - marginP.right;
+        const plotHP = pCanvas.height - marginP.top - marginP.bottom;
+        let maxProfitVal = -Infinity, minProfitVal = Infinity;
+        for(let x=0; x<=maxDisplayQ; x+=maxDisplayQ/100) {
+            let profit = evaluateProfit(P, a, b, c, x);
+            maxProfitVal = Math.max(maxProfitVal, profit);
+            minProfitVal = Math.min(minProfitVal, profit);
+        }
+        const range = Math.max(Math.abs(maxProfitVal), Math.abs(minProfitVal), 1000);
+        function mapPX(q) { return marginP.left + (q / maxDisplayQ) * plotWP; }
+        function mapPY(profit) {
+            const y0 = marginP.top + plotHP/2;
+            const scale = plotHP/(2*range);
+            return y0 - profit * scale;
+        }
+        pCtx.beginPath();
+        for(let x=0; x<=maxDisplayQ; x+=maxDisplayQ/200) {
+            let profit = evaluateProfit(P, a, b, c, x);
+            let y = mapPY(profit);
+            if(x===0) pCtx.moveTo(mapPX(x), y); else pCtx.lineTo(mapPX(x), y);
+        }
+        pCtx.strokeStyle = "#1f6392"; pCtx.lineWidth = 2.8; pCtx.stroke();
+        pCtx.beginPath(); let zeroY = mapPY(0); pCtx.moveTo(marginP.left, zeroY); pCtx.lineTo(marginP.left+plotWP, zeroY);
+        pCtx.strokeStyle = "#7f8c8d"; pCtx.setLineDash([6,6]); pCtx.stroke(); pCtx.setLineDash([]);
+        points.forEach(beq => {
+            if(beq>0) { pCtx.fillStyle = "#b22234"; pCtx.beginPath(); pCtx.arc(mapPX(beq), mapPY(0), 5, 0, 2*Math.PI); pCtx.fill(); }
+        });
+        if(maxProfitQVal && maxProfitQVal>0) {
+            const maxP = evaluateProfit(P, a, b, c, maxProfitQVal);
+            pCtx.fillStyle = "#1a5f2a"; pCtx.beginPath(); pCtx.arc(mapPX(maxProfitQVal), mapPY(maxP), 6, 0, 2*Math.PI); pCtx.fill();
+        }
+        const curXP = mapPX(quadQ); pCtx.beginPath(); pCtx.moveTo(curXP, marginP.top); pCtx.lineTo(curXP, marginP.top+plotHP); pCtx.strokeStyle = "#2c5f2d"; pCtx.stroke();
+    }
+    
+    function drawEmptyCharts() {
+        const canvases = ['bepCanvas', 'profitCanvas'];
+        canvases.forEach(id => {
+            const c = document.getElementById(id); if(!c) return;
+            const ctx = c.getContext('2d'); c.width = c.clientWidth; c.height = c.clientHeight;
+            ctx.clearRect(0,0,c.width,c.height);
+            ctx.fillStyle = "#ccc"; ctx.fillText("参数无效,无法绘图", 30, 60);
+        });
+    }
+    
+    // 目标利润 (解二次方程)
+    function updateQuadraticTargetProfit() {
+        const targetVal = parseFloat(document.getElementById('targetProfit').value);
+        if (isNaN(targetVal)) return;
+        const a = quadCoeff.a, b = quadCoeff.b, c = quadCoeff.c, P = quadP;
+        const A = -a;
+        const B = P - b;
+        const C = -(c + targetVal);
+        const delta = B*B - 4*A*C;
+        if (delta < 0) {
+            document.getElementById('targetResult').innerHTML = `⚠️ 无法达到目标利润 ¥${targetVal.toFixed(2)}，利润最大值低于目标。`;
+            return;
+        }
+        const sqrtD = Math.sqrt(delta);
+        const x1 = (-B + sqrtD) / (2*A);
+        const x2 = (-B - sqrtD) / (2*A);
+        const valid = [];
+        if(x1>0) valid.push(x1);
+        if(x2>0 && Math.abs(x2-x1)>1e-6) valid.push(x2);
+        if(valid.length === 0) document.getElementById('targetResult').innerHTML = `目标利润 ¥${targetVal.toFixed(2)} 无法达到 (无正数解)`;
+        else document.getElementById('targetResult').innerHTML = `🎯 达到利润 ¥${targetVal.toFixed(2)} 所需销量: ${valid.map(v=>v.toFixed(2)).join(' 或 ')} 件。`;
+    }
+    
+    function updateLinearTargetProfit() {
+        const target = parseFloat(document.getElementById('targetProfit').value);
+        if (isNaN(target)) return;
+        if (linearP <= linearVC) { document.getElementById('targetResult').innerHTML = "单价需大于变动成本"; return; }
+        const reqQ = (linearFC + target) / (linearP - linearVC);
+        document.getElementById('targetResult').innerHTML = `🎯 实现利润 ¥${target.toFixed(2)} 所需销量: ${reqQ.toFixed(2)} 件。`;
+    }
+    
+    // 模式切换事件
+    function setMode(mode) {
+        currentMode = mode;
+        if (mode === 'linear') {
+            linearParamsDiv.style.display = 'block';
+            quadraticParamsDiv.style.display = 'none';
+            pSens.disabled = false; vcSens.disabled = false;
+            refreshAll();
+        } else {
+            linearParamsDiv.style.display = 'none';
+            quadraticParamsDiv.style.display = 'block';
+            pSens.disabled = true; vcSens.disabled = true;
+            refreshAll();
+        }
+        modeTabs.forEach(tab => {
+            if (tab.dataset.mode === mode) tab.classList.add('active');
+            else tab.classList.remove('active');
+        });
+    }
+    
+    // 事件绑定
+    document.querySelectorAll('.mode-tab').forEach(tab => {
+        tab.addEventListener('click', () => setMode(tab.dataset.mode));
+    });
+    document.getElementById('fitQuadraticBtn').addEventListener('click', () => {
+        if(updateCoeffFromPoints()) refreshAll();
+        else alert("三点拟合失败，请检查数据是否有重复Q值");
+    });
+    [coeffA, coeffB, coeffC, pInputQuad, qInputQuad].forEach(inp => inp.addEventListener('input', () => refreshAll()));
+    [fcInput, vcInput, pInput, qInput].forEach(inp => inp.addEventListener('input', () => { if(currentMode==='linear') refreshAll(); }));
+    document.querySelectorAll('.step-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const target = btn.dataset.target;
+            const delta = parseFloat(btn.dataset.delta);
+            if(target === 'fc') fcInput.value = parseFloat(fcInput.value) + delta;
+            else if(target === 'vc') vcInput.value = parseFloat(vcInput.value) + delta;
+            else if(target === 'p') pInput.value = parseFloat(pInput.value) + delta;
+            else if(target === 'q') qInput.value = parseFloat(qInput.value) + delta;
+            else if(target === 'pQuad') pInputQuad.value = parseFloat(pInputQuad.value) + delta;
+            else if(target === 'qQuad') qInputQuad.value = parseFloat(qInputQuad.value) + delta;
+            refreshAll();
+        });
+    });
+    document.getElementById('calcTargetBtn').addEventListener('click', () => {
+        if(currentMode === 'linear') updateLinearTargetProfit();
+        else updateQuadraticTargetProfit();
+    });
+    document.getElementById('targetProfit').addEventListener('input', () => {
+        if(currentMode === 'linear') updateLinearTargetProfit();
+        else updateQuadraticTargetProfit();
+    });
+    pSens.addEventListener('input', () => { if(currentMode==='linear') { const val = pSens.value; pSensVal.innerText = (val>=0?`+${val}`:`${val}`)+"%"; linearP = parseFloat(pInput.value)*(1+val/100); refreshAll(); } });
+    vcSens.addEventListener('input', () => { if(currentMode==='linear') { const val = vcSens.value; vcSensVal.innerText = (val>=0?`+${val}`:`${val}`)+"%"; linearVC = parseFloat(vcInput.value)*(1+val/100); refreshAll(); } });
+    
+    // 启动
+    setMode('quadratic');
+    // 例题初始预设: 三点值为600,104000;1000,160000;2000,370000已经预设
+    updateCoeffFromPoints();
+    refreshAll();
+</script>
+</body>
+</html>

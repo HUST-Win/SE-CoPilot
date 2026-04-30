@@ -1,0 +1,768 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>层次分析法（AHP）小工具</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600&family=Georgia,serif&display=swap" rel="stylesheet">
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: #f0f4f9;
+            font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+            color: #1e293b;
+            padding: 30px 20px;
+        }
+
+        /* 主容器 */
+        .app-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: #ffffff;
+            border-radius: 24px;
+            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.08);
+            overflow: hidden;
+            border: 1px solid #e2e8f0;
+        }
+
+        /* 头部与进度条区域 */
+        .header {
+            background: #2c3e66;
+            color: white;
+            padding: 1.5rem 2rem;
+        }
+
+        .title-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            flex-wrap: wrap;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        h1 {
+            font-family: 'Georgia', serif;
+            font-weight: 600;
+            font-size: 1.8rem;
+            letter-spacing: -0.2px;
+            color: white;
+        }
+
+        .toolbar {
+            display: flex;
+            gap: 12px;
+        }
+
+        .tool-btn {
+            background: rgba(255,255,255,0.15);
+            border: 1px solid rgba(255,255,255,0.3);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 40px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 0.85rem;
+        }
+
+        .tool-btn:hover {
+            background: rgba(255,255,255,0.3);
+            transform: translateY(-1px);
+        }
+
+        /* 进度条 */
+        .progress-section {
+            margin-top: 8px;
+        }
+        .progress-bar-bg {
+            background: rgba(255,255,255,0.25);
+            border-radius: 40px;
+            height: 8px;
+            width: 100%;
+            overflow: hidden;
+        }
+        .progress-fill {
+            background: #facc15;
+            width: 0%;
+            height: 100%;
+            transition: width 0.3s ease;
+        }
+        .step-indicator {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 18px;
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+        .step-badge {
+            background: rgba(255,255,255,0.2);
+            padding: 5px 12px;
+            border-radius: 30px;
+            transition: all 0.1s;
+            cursor: pointer;
+        }
+        .step-badge.active {
+            background: #facc15;
+            color: #2c3e66;
+            font-weight: bold;
+        }
+        .step-badge.completed {
+            background: #2e7d64;
+            color: white;
+        }
+        .step-badge.pending {
+            background: rgba(255,255,255,0.2);
+            opacity: 0.8;
+        }
+
+        /* 主要内容区 */
+        .main-content {
+            padding: 2rem 2rem 2rem 2rem;
+            background: #fefefe;
+            min-height: 550px;
+        }
+
+        /* 卡片风格 */
+        .card {
+            background: #f8fafc;
+            border-radius: 20px;
+            border: 1px solid #e2edf2;
+            padding: 1.5rem;
+            margin-bottom: 1.8rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+        }
+
+        .step-title {
+            font-family: 'Georgia', serif;
+            font-size: 1.6rem;
+            font-weight: 600;
+            color: #1e2a3e;
+            border-left: 6px solid #2c3e66;
+            padding-left: 16px;
+            margin-bottom: 1.5rem;
+        }
+
+        .input-group {
+            margin-bottom: 1.2rem;
+        }
+        label {
+            font-weight: 600;
+            display: inline-block;
+            margin-bottom: 6px;
+            color: #334155;
+        }
+        input, select {
+            padding: 10px 12px;
+            border-radius: 12px;
+            border: 1px solid #cbd5e1;
+            font-size: 0.9rem;
+            background: white;
+        }
+        .name-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-top: 10px;
+        }
+
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            overflow-x: auto;
+            display: block;
+            background: white;
+            border-radius: 16px;
+        }
+        th, td {
+            border: 1px solid #d1d9e8;
+            padding: 10px 8px;
+            text-align: center;
+            font-size: 0.85rem;
+        }
+        th {
+            background: #eef2ff;
+            font-weight: 600;
+            color: #1e293b;
+        }
+        input.matrix-input {
+            width: 70px;
+            text-align: center;
+            border-radius: 8px;
+            padding: 8px 4px;
+        }
+
+        .button-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin: 20px 0 10px;
+        }
+        .btn {
+            background: #f1f5f9;
+            border: 1px solid #cbd5e1;
+            padding: 8px 18px;
+            border-radius: 40px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: 0.1s;
+        }
+        .btn-primary {
+            background: #2c3e66;
+            border-color: #2c3e66;
+            color: white;
+        }
+        .btn-primary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .btn-outline {
+            background: white;
+            border: 1px solid #94a3b8;
+        }
+        .result-box {
+            background: white;
+            border-radius: 20px;
+            padding: 1.2rem;
+            margin-top: 1rem;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+        }
+
+        .math {
+            font-family: monospace;
+            font-style: italic;
+        }
+
+        .highlight {
+            background: #ffecb3;
+            font-weight: bold;
+            padding: 2px 8px;
+            border-radius: 20px;
+        }
+
+        .warning {
+            color: #b91c1c;
+            background: #fee2e2;
+            padding: 12px;
+            border-radius: 16px;
+            margin: 15px 0;
+        }
+
+        @media (max-width: 700px) {
+            .main-content { padding: 1rem; }
+            input.matrix-input { width: 55px; }
+        }
+        footer {
+            padding: 1rem 2rem;
+            border-top: 1px solid #e2e8f0;
+            font-size: 0.75rem;
+            color: #64748b;
+            background: #f9fbfd;
+        }
+    </style>
+</head>
+<body>
+<div class="app-container" id="appRoot">
+    <div class="header">
+        <div class="title-row">
+            <h1>⚖️ 层次分析法（AHP）</h1>
+            <div class="toolbar">
+                <button class="tool-btn" id="saveProgressBtn">💾 保存进度 (JSON)</button>
+                <input type="file" id="loadFileInput" accept=".json" style="display: none;" />
+                <button class="tool-btn" id="loadProgressBtn">📂 加载进度</button>
+            </div>
+        </div>
+        <div class="progress-section">
+            <div class="progress-bar-bg"><div class="progress-fill" id="progressFill"></div></div>
+            <div class="step-indicator" id="stepIndicator"></div>
+        </div>
+    </div>
+
+    <div class="main-content" id="stepContentArea">
+        <!-- 动态渲染当前步骤 -->
+        <div id="dynamicStepView"></div>
+        <div class="button-group" style="justify-content: space-between; margin-top: 25px;">
+            <button class="btn" id="prevStepBtn" style="visibility: hidden;">◀ 上一步</button>
+            <button class="btn btn-primary" id="nextStepBtn">下一步 ▶</button>
+        </div>
+    </div>
+    <footer>⚖️ AHP 一致性比率 CR < 0.1 视为通过 | 几何平均法计算权重 | RI 基于Saaty标准表</footer>
+</div>
+
+<script>
+    // ---------- RI 表 ----------
+    const RI_TABLE = [0, 0, 0.58, 0.90, 1.12, 1.24, 1.32, 1.41, 1.45];
+
+    // ---------- 全局状态 ----------
+    let state = {
+        stepIdx: 0,                 // 0-based: 0:方案,1:准则,2:准则矩阵,3+:方案矩阵(每个准则一个)
+        numAlternatives: 3,
+        altNames: ['方案A', '方案B', '方案C'],
+        numCriteria: 2,
+        critNames: ['准则1', '准则2'],
+        criteriaMatrix: [],        // n x n 数值
+        altMatrices: [],           // 每个准则对应一个 matrix (m x m)
+        // 步骤完成状态（动态标记，用于禁用下一步）
+        stepValid: {}
+    };
+
+    let totalSteps = 3; // 动态更新: 2个基础 + 1准则矩阵 + numCriteria 个方案矩阵
+
+    // 辅助函数: 重新计算总步骤数
+    function updateTotalSteps() {
+        totalSteps = 2 + 1 + state.numCriteria; // 步骤0+步骤1 + 步骤2准则矩阵 + 每个准则一个方案矩阵
+    }
+
+    // ---------- AHP 核心计算 (矩阵: 几何平均法) ----------
+    function computeWeightsAndCR(matrix) {
+        const n = matrix.length;
+        if (n === 0) return { weights: [], lambdaMax: 0, CI: 0, CR: 0 };
+        // 几何平均法求权重
+        let geom = new Array(n).fill(1);
+        for (let i = 0; i < n; i++) {
+            let prod = 1;
+            for (let j = 0; j < n; j++) prod *= matrix[i][j];
+            geom[i] = Math.pow(prod, 1/n);
+        }
+        let sumGeom = geom.reduce((a,b)=>a+b,0);
+        let weights = geom.map(g => g / sumGeom);
+        // 计算λ_max: AW / W
+        let AW = new Array(n).fill(0);
+        for (let i = 0; i < n; i++) {
+            for (let j = 0; j < n; j++) AW[i] += matrix[i][j] * weights[j];
+        }
+        let lambda = 0;
+        for (let i = 0; i < n; i++) lambda += AW[i] / weights[i];
+        let lambdaMax = lambda / n;
+        let CI = (lambdaMax - n) / (n - 1);
+        let RI = RI_TABLE[n] || 1.45;
+        let CR = CI / RI;
+        return { weights, lambdaMax, CI, CR };
+    }
+
+    // 自动对称填充 (根据上三角补下三角倒数)
+    function autoFillSymmetric(matrix) {
+        const n = matrix.length;
+        for (let i = 0; i < n; i++) {
+            for (let j = i+1; j < n; j++) {
+                if (matrix[i][j] !== null && matrix[i][j] !== undefined && !isNaN(matrix[i][j]) && matrix[i][j] !== 0) {
+                    matrix[j][i] = 1 / matrix[i][j];
+                } else if (matrix[j][i] !== null && !isNaN(matrix[j][i]) && matrix[j][i] !== 0) {
+                    matrix[i][j] = 1 / matrix[j][i];
+                }
+            }
+        }
+        for (let i=0;i<n;i++) matrix[i][i] = 1;
+        return matrix;
+    }
+
+    // 随机示例填充 (上三角随机1~9整数, 避免全1)
+    function randomExampleFill(matrix) {
+        const n = matrix.length;
+        for (let i = 0; i < n; i++) {
+            for (let j = i+1; j < n; j++) {
+                let val = Math.floor(Math.random() * 8) + 2; // 2~9
+                if (Math.random() > 0.6) val = Math.floor(Math.random() * 9) + 1;
+                matrix[i][j] = val;
+                matrix[j][i] = 1 / val;
+            }
+            matrix[i][i] = 1;
+        }
+        return matrix;
+    }
+
+    function resetMatrixToEqual(matrix) {
+        const n = matrix.length;
+        for (let i = 0; i < n; i++) {
+            for (let j = 0; j < n; j++) matrix[i][j] = (i===j) ? 1 : 1;
+        }
+        return matrix;
+    }
+
+    // 校验当前步骤数据完整性
+    function validateCurrentStep() {
+        if (state.stepIdx === 0) {
+            // 方案名称非空且数量一致
+            if (state.altNames.length !== state.numAlternatives) return false;
+            return state.altNames.every(n => n && n.trim() !== "");
+        }
+        if (state.stepIdx === 1) {
+            return state.critNames.length === state.numCriteria && state.critNames.every(c => c && c.trim() !== "");
+        }
+        if (state.stepIdx === 2) {
+            // 准则矩阵完整上三角非空且数值有效
+            const mat = state.criteriaMatrix;
+            if (!mat.length) return false;
+            let ok = true;
+            for (let i=0; i<mat.length; i++) {
+                for (let j=i+1; j<mat.length; j++) {
+                    let val = mat[i][j];
+                    if (val === undefined || val === null || isNaN(val) || val <= 0) ok = false;
+                }
+            }
+            return ok;
+        }
+        if (state.stepIdx >= 3) {
+            const altIdx = state.stepIdx - 3;
+            if (altIdx >= state.altMatrices.length) return false;
+            const mat = state.altMatrices[altIdx];
+            if (!mat || mat.length !== state.numAlternatives) return false;
+            let ok = true;
+            for (let i=0; i<mat.length; i++) {
+                for (let j=i+1; j<mat.length; j++) {
+                    let val = mat[i][j];
+                    if (val === undefined || val === null || isNaN(val) || val <= 0) ok = false;
+                }
+            }
+            return ok;
+        }
+        return true;
+    }
+
+    // 重新验证整个会话步骤状态（用于保存标记）
+    function recomputeStepValidAll() {
+        const oldIdx = state.stepIdx;
+        let validMap = {};
+        // 临时切换step检查
+        let stepsCount = 2 + 1 + state.numCriteria;
+        for (let s=0; s<stepsCount; s++) {
+            let originalIdx = state.stepIdx;
+            state.stepIdx = s;
+            let isValid = validateCurrentStep();
+            validMap[s] = isValid;
+            state.stepIdx = originalIdx;
+        }
+        state.stepValid = validMap;
+        // 重绘进度条和标签
+        renderProgressAndSteps();
+    }
+
+    // 全局数据初始化矩阵维度
+    function initMatricesFromDimensions() {
+        const nCrit = state.numCriteria;
+        const nAlt = state.numAlternatives;
+        // 准则矩阵
+        if (!state.criteriaMatrix || state.criteriaMatrix.length !== nCrit) {
+            let newMat = Array(nCrit).fill().map(()=>Array(nCrit).fill(1));
+            for(let i=0;i<nCrit;i++) for(let j=0;j<nCrit;j++) newMat[i][j] = i===j?1:1;
+            state.criteriaMatrix = newMat;
+        }
+        // 方案层矩阵
+        let newAltMats = [];
+        for (let c=0; c<nCrit; c++) {
+            if (state.altMatrices[c] && state.altMatrices[c].length === nAlt) {
+                newAltMats.push(state.altMatrices[c]);
+            } else {
+                let mat = Array(nAlt).fill().map(()=>Array(nAlt).fill(1));
+                for(let i=0;i<nAlt;i++) mat[i][i]=1;
+                newAltMats.push(mat);
+            }
+        }
+        state.altMatrices = newAltMats;
+    }
+
+    // 全局计算综合得分与结果
+    function computeFinalScores() {
+        const critRes = computeWeightsAndCR(state.criteriaMatrix);
+        const critWeights = critRes.weights;
+        let altLocalWeights = [];
+        for (let idx=0; idx<state.numCriteria; idx++) {
+            const mat = state.altMatrices[idx];
+            const {weights} = computeWeightsAndCR(mat);
+            altLocalWeights.push(weights);
+        }
+        let finalScores = new Array(state.numAlternatives).fill(0);
+        for (let i=0; i<state.numAlternatives; i++) {
+            let sum = 0;
+            for (let j=0; j<state.numCriteria; j++) {
+                sum += critWeights[j] * altLocalWeights[j][i];
+            }
+            finalScores[i] = sum;
+        }
+        return { critWeights, altLocalWeights, finalScores, critCR: critRes.CR };
+    }
+
+    // ---------- 渲染主逻辑（根据stepIdx）----------
+    let currentRenderFunc = null;
+
+    function renderCurrentStep() {
+        const container = document.getElementById('dynamicStepView');
+        if (!container) return;
+        if (state.stepIdx === 0) renderStepAlternatives(container);
+        else if (state.stepIdx === 1) renderStepCriteria(container);
+        else if (state.stepIdx === 2) renderCriteriaMatrix(container);
+        else if (state.stepIdx >= 3) renderAlternativeMatrixForCriterion(container, state.stepIdx - 3);
+        // 更新导航按钮
+        const prevBtn = document.getElementById('prevStepBtn');
+        const nextBtn = document.getElementById('nextStepBtn');
+        prevBtn.style.visibility = state.stepIdx === 0 ? 'hidden' : 'visible';
+        const isValid = validateCurrentStep();
+        nextBtn.disabled = !isValid;
+        // 保存步骤有效标记
+        state.stepValid[state.stepIdx] = isValid;
+        renderProgressAndSteps();
+    }
+
+    function renderProgressAndSteps() {
+        const stepsTotal = 2 + 1 + state.numCriteria;
+        let percent = ((state.stepIdx+1)/stepsTotal)*100;
+        document.getElementById('progressFill').style.width = `${percent}%`;
+        // 构建步骤指示器
+        const stepsDiv = document.getElementById('stepIndicator');
+        stepsDiv.innerHTML = '';
+        let stepNames = [];
+        stepNames.push('1. 设定方案');
+        stepNames.push('2. 设定准则');
+        stepNames.push('3. 准则层矩阵');
+        for(let i=0;i<state.numCriteria;i++) stepNames.push(`4.${i+1} 「${state.critNames[i]||`准则${i+1}`}」矩阵`);
+        for(let i=0;i<stepNames.length;i++) {
+            let badge = document.createElement('div');
+            badge.className = 'step-badge';
+            if (i === state.stepIdx) badge.classList.add('active');
+            if (state.stepValid[i] === true && i !== state.stepIdx) badge.classList.add('completed');
+            else if (state.stepValid[i] !== true && i !== state.stepIdx) badge.classList.add('pending');
+            badge.innerText = stepNames[i];
+            badge.onclick = (function(idx){ return ()=> { if(idx <= state.stepIdx+1 && idx>=0) { state.stepIdx = idx; renderCurrentStep(); } } })(i);
+            stepsDiv.appendChild(badge);
+        }
+    }
+
+    // 渲染方案
+    function renderStepAlternatives(container) {
+        container.innerHTML = `<div class="card"><div class="step-title">📋 步骤 1 · 定义决策方案</div>
+        <div class="input-group"><label>方案数量 (2~9):</label><input type="number" id="altCount" min="2" max="9" value="${state.numAlternatives}" style="width:100px;"></div>
+        <div id="altNamesContainer"></div><div class="button-group"><button class="btn-outline btn" id="refreshAltNamesBtn">刷新名称</button></div></div>`;
+        document.getElementById('altCount').addEventListener('change', (e) => {
+            let newVal = parseInt(e.target.value);
+            if (newVal>=2 && newVal<=9) {
+                state.numAlternatives = newVal;
+                let oldNames = state.altNames;
+                let newNames = [];
+                for(let i=0;i<newVal;i++) newNames.push(oldNames[i] || `方案${String.fromCharCode(65+i)}`);
+                state.altNames = newNames;
+                initMatricesFromDimensions();
+                recomputeStepValidAll();
+                renderStepAlternatives(container);
+            }
+        });
+        const nameDiv = document.getElementById('altNamesContainer');
+        function renderNames() {
+            nameDiv.innerHTML = `<div class="name-grid">${state.altNames.map((n,idx)=>`<div><label>方案 ${idx+1}:</label><input type="text" value="${n.replace(/"/g, '&quot;')}" data-idx="${idx}" class="alt-name-input"></div>`).join('')}</div>`;
+            document.querySelectorAll('.alt-name-input').forEach(inp => {
+                inp.addEventListener('change', (e) => {
+                    let idx = parseInt(e.target.dataset.idx);
+                    state.altNames[idx] = e.target.value;
+                    recomputeStepValidAll();
+                    renderCurrentStep();
+                });
+            });
+        }
+        renderNames();
+        document.getElementById('refreshAltNamesBtn').addEventListener('click',()=>{ renderNames(); recomputeStepValidAll(); });
+        setTimeout(()=>{ recomputeStepValidAll(); },20);
+    }
+
+    function renderStepCriteria(container) {
+        container.innerHTML = `<div class="card"><div class="step-title">📐 步骤 2 · 设定决策准则</div>
+        <div><label>准则数量 (2~7):</label><input type="number" id="critCount" min="2" max="7" value="${state.numCriteria}" style="width:100px;"></div>
+        <div id="critNamesContainer"></div><button class="btn-outline btn" id="refreshCritNamesBtn">刷新名称</button></div>`;
+        document.getElementById('critCount').addEventListener('change',(e)=>{
+            let newVal=parseInt(e.target.value);
+            if(newVal>=2 && newVal<=7){
+                state.numCriteria=newVal;
+                let old=state.critNames;
+                let newNames=[];
+                for(let i=0;i<newVal;i++) newNames.push(old[i] || `准则${i+1}`);
+                state.critNames=newNames;
+                initMatricesFromDimensions();
+                recomputeStepValidAll();
+                renderStepCriteria(container);
+            }
+        });
+        function renderCrit() {
+            const div = document.getElementById('critNamesContainer');
+            div.innerHTML = `<div class="name-grid">${state.critNames.map((n,idx)=>`<div><label>准则 ${idx+1}:</label><input type="text" value="${n.replace(/"/g, '&quot;')}" data-idx="${idx}" class="crit-name-input"></div>`).join('')}</div>`;
+            document.querySelectorAll('.crit-name-input').forEach(inp=>{
+                inp.addEventListener('change',(e)=>{
+                    let idx=parseInt(e.target.dataset.idx);
+                    state.critNames[idx]=e.target.value;
+                    recomputeStepValidAll();
+                    renderCurrentStep();
+                });
+            });
+        }
+        renderCrit();
+        document.getElementById('refreshCritNamesBtn').addEventListener('click',()=> renderCrit());
+        setTimeout(()=>recomputeStepValidAll(),20);
+    }
+
+    function buildMatrixUI(matrix, onUpdate, title) {
+        const n = matrix.length;
+        let html = `<div><h3 style="margin:10px 0;">${title}</h3><div class="table-wrapper" style="overflow-x:auto;"><table>`;
+        html += `<thead><tr><th>对比项</th>${Array(n).fill().map((_,i)=>`<th>${i+1}</th>`).join('')}</tr></thead><tbody>`;
+        for(let i=0;i<n;i++){
+            html += `<tr><th>${i+1}</th>`;
+            for(let j=0;j<n;j++){
+                if(i===j) html += `<td>1</td>`;
+                else if(i<j) html += `<td><input class="matrix-input" type="number" step="any" value="${matrix[i][j]}" data-i="${i}" data-j="${j}"></td>`;
+                else html += `<td>${matrix[i][j]?.toFixed(4) || ''}</td>`;
+            }
+            html += `</tr>`;
+        }
+        html += `</tbody></table></div><div class="button-group" style="margin-top:12px;"><button class="btn-outline btn" id="randomFillBtn">🎲 示例填充(1-9随机)</button>
+        <button class="btn-outline btn" id="symmetricFillBtn">🔄 对称自动填充</button>
+        <button class="btn-outline btn" id="resetEqualBtn">⚖️ 重置为同等重要</button></div></div>`;
+        return html;
+    }
+
+    function attachMatrixEvents(matrix, stepSpecific) {
+        document.querySelectorAll('.matrix-input').forEach(inp => {
+            inp.addEventListener('change', (e) => {
+                let i = parseInt(inp.dataset.i), j = parseInt(inp.dataset.j);
+                let val = parseFloat(inp.value);
+                if(!isNaN(val) && val>0) {
+                    matrix[i][j] = val;
+                    matrix[j][i] = 1/val;
+                    renderCurrentStep();
+                }
+            });
+        });
+        const randBtn = document.getElementById('randomFillBtn');
+        if(randBtn) randBtn.onclick = () => { randomExampleFill(matrix); renderCurrentStep(); };
+        const symBtn = document.getElementById('symmetricFillBtn');
+        if(symBtn) symBtn.onclick = () => { autoFillSymmetric(matrix); renderCurrentStep(); };
+        const resetBtn = document.getElementById('resetEqualBtn');
+        if(resetBtn) resetBtn.onclick = () => { resetMatrixToEqual(matrix); renderCurrentStep(); };
+    }
+
+    function renderCriteriaMatrix(container) {
+        let mat = state.criteriaMatrix;
+        if(mat.length !== state.numCriteria) initMatricesFromDimensions();
+        const html = buildMatrixUI(mat, null, `⚖️ 准则层成对比较矩阵 (n=${state.numCriteria})`);
+        container.innerHTML = `<div class="card"><div class="step-title">📊 步骤 3 · 准则层判断矩阵</div>${html}<div id="criteriaCRDisplay" class="result-box" style="margin-top:15px;"></div></div>`;
+        attachMatrixEvents(state.criteriaMatrix, true);
+        updateCRDisplayForMatrix(state.criteriaMatrix, document.getElementById('criteriaCRDisplay'), '准则层CR');
+    }
+
+    function renderAlternativeMatrixForCriterion(container, critIndex) {
+        const critName = state.critNames[critIndex] || `准则${critIndex+1}`;
+        let mat = state.altMatrices[critIndex];
+        if(!mat || mat.length !== state.numAlternatives) initMatricesFromDimensions();
+        const html = buildMatrixUI(mat, null, `📌 针对「${critName}」的方案成对比较矩阵 (方案数=${state.numAlternatives})`);
+        container.innerHTML = `<div class="card"><div class="step-title">📌 步骤 4.${critIndex+1} · ${critName} 下方案比较</div>${html}<div id="altCRDisplay" class="result-box"></div></div>`;
+        attachMatrixEvents(state.altMatrices[critIndex], true);
+        updateCRDisplayForMatrix(state.altMatrices[critIndex], document.getElementById('altCRDisplay'), `${critName} 方案层CR`);
+        if(critIndex === state.numCriteria-1 && state.stepIdx === 3+state.numCriteria-1) {
+            // 最终步骤展示综合结果
+            const finalDiv = document.createElement('div');
+            finalDiv.className = 'card';
+            finalDiv.innerHTML = `<div class="step-title">🏆 最终综合权重与推荐</div><div id="finalResultArea"></div>`;
+            container.appendChild(finalDiv);
+            renderFinalResult();
+        }
+    }
+
+    function updateCRDisplayForMatrix(matrix, el, title) {
+        if(!el) return;
+        const { CR, CI, lambdaMax } = computeWeightsAndCR(matrix);
+        const n = matrix.length;
+        el.innerHTML = `<span class="math">λ<sub>max</sub>=${lambdaMax.toFixed(4)}</span> <span class="math">CI=${CI.toFixed(4)}</span> <span class="math">CR=${CR.toFixed(4)}</span> ${CR<0.1?"✅ 一致性通过":"⚠️ CR≥0.1 建议调整矩阵"}`;
+    }
+
+    function renderFinalResult() {
+        const area = document.getElementById('finalResultArea');
+        if(!area) return;
+        const { critWeights, altLocalWeights, finalScores, critCR } = computeFinalScores();
+        let maxScore = Math.max(...finalScores);
+        let bestIdx = finalScores.indexOf(maxScore);
+        let altMaxCR = 0;
+        for(let i=0;i<state.numCriteria;i++) {
+            const {CR} = computeWeightsAndCR(state.altMatrices[i]);
+            altMaxCR = Math.max(altMaxCR, CR);
+        }
+        let warningMsg = "";
+        if(critCR>=0.1) warningMsg += `<div class="warning">⚠️ 准则层CR=${critCR.toFixed(4)}>0.1，一致性不满足，建议调整准则矩阵。</div>`;
+        if(altMaxCR>=0.1) warningMsg += `<div class="warning">⚠️ 方案层最大CR=${altMaxCR.toFixed(4)}>0.1，部分矩阵不一致。</div>`;
+        let html = `<table style="width:100%;margin-bottom:20px;"><thead><tr><th>方案</th>${state.critNames.map(c=>`<th>${c} 局部权重</th>`).join('')}<th>综合权重</th><th>排序</th></tr></thead><tbody>`;
+        for(let a=0;a<state.numAlternatives;a++){
+            html+=`<tr><td>${state.altNames[a]}</td>`;
+            for(let c=0;c<state.numCriteria;c++) html+=`<td>${altLocalWeights[c][a].toFixed(4)}</td>`;
+            html+=`<td class="${bestIdx===a?'highlight':''}">${finalScores[a].toFixed(4)}</td><td>${bestIdx===a?'🥇 最优':''}</td></tr>`;
+        }
+        html+=`</tbody></table>`;
+        const explanation = `<div class="result-box"><strong>📖 结果解释模块</strong><br>根据AHP层次分析，综合权重最高的方案为<strong>“${state.altNames[bestIdx]}”</strong>，权重值为<strong>${finalScores[bestIdx].toFixed(4)}</strong>。各准则一致性比例分别为：准则层CR=${critCR.toFixed(4)} ${critCR<0.1?"✅有效":"⚠️无效"}，方案层最大CR=${altMaxCR.toFixed(4)}。${critCR<0.1 && altMaxCR<0.1 ? "整体判断矩阵通过一致性检验，推荐结果可信。" : "注意部分矩阵一致性比率>0.1，建议返回重新调整判断矩阵以获得更可靠结论。"}</div>`;
+        area.innerHTML = html + explanation + warningMsg;
+    }
+
+    // 加载/保存
+    function saveToJSON() {
+        let dump = {
+            version:1,
+            numAlternatives:state.numAlternatives, altNames:state.altNames,
+            numCriteria:state.numCriteria, critNames:state.critNames,
+            criteriaMatrix:state.criteriaMatrix,
+            altMatrices:state.altMatrices,
+            stepIdx:state.stepIdx
+        };
+        const dataStr = JSON.stringify(dump,null,2);
+        const blob = new Blob([dataStr],{type:'application/json'});
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `ahp_progress_${new Date().toISOString().slice(0,19)}.json`;
+        a.click();
+        URL.revokeObjectURL(a.href);
+    }
+
+    function loadFromJSON(jsonObj) {
+        try{
+            const d = jsonObj;
+            state.numAlternatives = d.numAlternatives;
+            state.altNames = d.altNames;
+            state.numCriteria = d.numCriteria;
+            state.critNames = d.critNames;
+            state.criteriaMatrix = d.criteriaMatrix;
+            state.altMatrices = d.altMatrices;
+            state.stepIdx = d.stepIdx;
+            initMatricesFromDimensions();
+            recomputeStepValidAll();
+            renderCurrentStep();
+        } catch(e){ alert("加载失败: 文件格式错误"); }
+    }
+
+    // 事件绑定
+    document.getElementById('saveProgressBtn').onclick = ()=> saveToJSON();
+    document.getElementById('loadProgressBtn').onclick = ()=> document.getElementById('loadFileInput').click();
+    document.getElementById('loadFileInput').onchange = (e) => {
+        const file = e.target.files[0];
+        if(!file) return;
+        const reader = new FileReader();
+        reader.onload = ev => { try{ loadFromJSON(JSON.parse(ev.target.result)); } catch(e){ alert("无效JSON"); } };
+        reader.readAsText(file);
+        e.target.value = '';
+    };
+    document.getElementById('nextStepBtn').onclick = () => {
+        const stepsTotal = 2+1+state.numCriteria;
+        if(state.stepIdx+1 < stepsTotal) { state.stepIdx++; renderCurrentStep(); }
+        else alert("已完成所有步骤，可在最终结果区查看综合排序");
+    };
+    document.getElementById('prevStepBtn').onclick = () => { if(state.stepIdx>0) { state.stepIdx--; renderCurrentStep(); }};
+    // 初始化
+    function init() {
+        state.numAlternatives=3; state.altNames=['方案A','方案B','方案C'];
+        state.numCriteria=2; state.critNames=['准则1','准则2'];
+        initMatricesFromDimensions();
+        state.stepIdx=0;
+        updateTotalSteps();
+        recomputeStepValidAll();
+        renderCurrentStep();
+    }
+    init();
+</script>
+</body>
+</html>

@@ -1,0 +1,707 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>风险决策分析工具：期望值准则 + 敏感性分析 </title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #f0f4f8;
+            font-family: 'Segoe UI', 'Roboto', 'Georgia', 'Times New Roman', serif;
+            margin: 0;
+            padding: 2rem 1.5rem;
+            color: #1e2a3e;
+        }
+
+        /* 学术深蓝 + 米白基调 */
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: #fefaf5;  /* 暖米白 */
+            border-radius: 1.25rem;
+            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.08);
+            overflow: hidden;
+            border: 1px solid #e2e8f0;
+        }
+
+        /* 头部区域 */
+        .header {
+            background: #0b2b3b;
+            padding: 1.5rem 2rem;
+            color: #f8f3e9;
+            border-bottom: 3px solid #c9a86b;
+        }
+        .header h1 {
+            margin: 0 0 0.25rem;
+            font-weight: 500;
+            letter-spacing: -0.3px;
+            font-size: 1.8rem;
+        }
+        .header p {
+            margin: 0;
+            opacity: 0.8;
+            font-style: italic;
+            font-size: 0.95rem;
+        }
+
+        /* 步骤条 */
+        .step-progress {
+            display: flex;
+            background: #e9edf2;
+            padding: 0;
+            margin: 0;
+            list-style: none;
+            border-bottom: 1px solid #cfdde6;
+        }
+        .step-item {
+            flex: 1;
+            text-align: center;
+            padding: 0.9rem 0.2rem;
+            background: #eef2f7;
+            color: #3e5a6b;
+            font-weight: 500;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+            border-right: 1px solid #dce3ec;
+            cursor: default;
+        }
+        .step-item.active {
+            background: #fefaf5;
+            color: #0b2b3b;
+            border-bottom: 3px solid #c9a86b;
+            font-weight: 600;
+        }
+        .step-item.disabled-step {
+            opacity: 0.6;
+        }
+        .step-item.completed {
+            background: #e0e9f0;
+            color: #1f5e6e;
+        }
+
+        /* 主内容区 */
+        .main-card {
+            padding: 1.8rem 2rem 2.2rem;
+        }
+
+        .section-title {
+            font-weight: 600;
+            font-size: 1.3rem;
+            border-left: 5px solid #c9a86b;
+            padding-left: 1rem;
+            margin: 1.2rem 0 1.2rem 0;
+            color: #1e3a4a;
+        }
+
+        .param-panel {
+            display: flex;
+            gap: 1.5rem;
+            flex-wrap: wrap;
+            margin-bottom: 1.5rem;
+            background: #f7f3ec;
+            padding: 1rem 1.5rem;
+            border-radius: 1rem;
+            align-items: flex-end;
+        }
+        .param-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.4rem;
+        }
+        .param-group label {
+            font-weight: 600;
+            font-size: 0.85rem;
+            color: #2c4c5c;
+        }
+        .param-group input {
+            width: 110px;
+            padding: 0.5rem;
+            border: 1px solid #cfdde6;
+            border-radius: 8px;
+            background: white;
+            font-size: 1rem;
+        }
+        button {
+            background: #1f5e6e;
+            border: none;
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 40px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: 0.15s;
+            font-family: inherit;
+            border: 1px solid #1d5564;
+        }
+        button:hover {
+            background: #0b3b48;
+            transform: translateY(-1px);
+        }
+        button.secondary {
+            background: #bc9a6c;
+            border-color: #a88658;
+        }
+        button.secondary:hover {
+            background: #a57248;
+        }
+
+        .matrix-table {
+            overflow-x: auto;
+            margin: 1.2rem 0;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9rem;
+            background: white;
+            border-radius: 14px;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        }
+        th, td {
+            border: 1px solid #dce3ec;
+            padding: 0.7rem 0.5rem;
+            text-align: center;
+        }
+        th {
+            background: #eef2f7;
+            font-weight: 600;
+            color: #1f4e5e;
+        }
+        input.table-input {
+            width: 85px;
+            padding: 0.4rem;
+            text-align: center;
+            border: 1px solid #cbdbe0;
+            border-radius: 6px;
+        }
+        .prob-row {
+            background: #fefaf5;
+        }
+        .warning {
+            color: #bc5a2c;
+            font-size: 0.8rem;
+            margin-top: 0.3rem;
+        }
+        .result-area {
+            background: #eef2f7;
+            padding: 1rem 1.4rem;
+            border-radius: 1rem;
+            margin-top: 1rem;
+        }
+        .best-recommend {
+            background: #d9e6dc;
+            border-left: 6px solid #3d8f7c;
+            padding: 0.8rem 1.2rem;
+            border-radius: 0.8rem;
+            font-weight: 600;
+        }
+        .sensitivity-panel {
+            margin-top: 2rem;
+            background: #f8f3ec;
+            padding: 1.2rem 1.5rem;
+            border-radius: 1rem;
+        }
+        .slider-container {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            flex-wrap: wrap;
+            margin: 1rem 0;
+        }
+        input[type=range] {
+            flex: 2;
+            min-width: 200px;
+        }
+        .ranking-list {
+            font-size: 0.9rem;
+            margin-top: 0.8rem;
+        }
+        .badge {
+            background: #c9a86b20;
+            padding: 0.15rem 0.4rem;
+            border-radius: 12px;
+            font-weight: 500;
+        }
+        .footer-bar {
+            display: flex;
+            justify-content: flex-end;
+            gap: 1rem;
+            margin-top: 1.5rem;
+            border-top: 1px solid #e2e8f0;
+            padding-top: 1.5rem;
+        }
+        @media (max-width: 760px) {
+            body { padding: 1rem; }
+            .main-card { padding: 1rem; }
+            input.table-input { width: 65px; }
+        }
+        hr {
+            margin: 1rem 0;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <h1>🎲 风险型决策工具 </h1>
+        <p>基于期望值准则</p>
+    </div>
+    <ul class="step-progress" id="stepProgress">
+        <li class="step-item" data-step="1">步骤 1 · 设置维度</li>
+        <li class="step-item" data-step="2">步骤 2 · 损益矩阵 & 概率</li>
+        <li class="step-item" data-step="3">步骤 3 · 决策 & 敏感性分析</li>
+    </ul>
+    <div class="main-card" id="appContainer">
+        <!-- 动态渲染区域 -->
+        <div id="dynamicContent"></div>
+    </div>
+</div>
+
+<script>
+    // ----- 全局状态 -----
+    let currentStep = 1;          // 1,2,3
+    let m = 3;                    // 方案数 (2~8)
+    let n = 2;                    // 状态数 (2~6)
+    let payoffMatrix = [];        // 二维数组 [m][n]
+    let probabilities = [];       // 长度 n
+    let savedConfig = null;       // 储存json加载时的中间态，方便
+
+    // 敏感性分析相关状态
+    let sensitivityActive = false;
+    let sensitivityStateIdx = 0;   // 调整哪个自然状态的概率
+    let sensitivityProbability = 0.3; // 当前滑块值
+    let rankingCache = [];          // 排序结果
+
+    // DOM 元素引用动态生成，需借助渲染函数更新
+
+    // 辅助：校验概率自动补齐
+    function autoFillProbabilities(probsArray, expectedN) {
+        let arr = [...probsArray];
+        if (arr.length !== expectedN) {
+            // 若长度不符，重置
+            let newArr = new Array(expectedN).fill(0);
+            for (let i = 0; i < Math.min(arr.length, expectedN); i++) newArr[i] = arr[i];
+            arr = newArr;
+        }
+        let sum = 0;
+        for (let i = 0; i < expectedN - 1; i++) {
+            let v = parseFloat(arr[i]);
+            if (isNaN(v)) v = 0;
+            arr[i] = Math.min(1, Math.max(0, v));
+            sum += arr[i];
+        }
+        let last = 1 - sum;
+        if (last < 0) {
+            // 超1则归一最后
+            last = 0;
+            // 调整前面使总和为1, 简单处理: 重新归一
+            let total = 0;
+            for (let i=0;i<expectedN-1;i++) total += arr[i];
+            if(total>0) for(let i=0;i<expectedN-1;i++) arr[i] = arr[i]/total * (1 - Math.max(0,last));
+            last = 1 - arr.reduce((a,b)=>a+b,0);
+        }
+        arr[expectedN-1] = Math.max(0, Math.min(1, last));
+        // 精度处理
+        let finSum = arr.reduce((a,b)=>a+b,0);
+        if(Math.abs(finSum-1)>0.0001) arr[expectedN-1] += (1-finSum);
+        return arr.map(v => Math.min(1,Math.max(0, v)));
+    }
+
+    // 根据当前m,n构建/重置损益矩阵和概率
+    function resetMatricesAndProbs() {
+        // 保留原值近似，但维度改变时重新初始化
+        let newPayoff = Array(m).fill().map(() => Array(n).fill(0));
+        for (let i=0; i<m; i++) {
+            for (let j=0; j<n; j++) {
+                if (payoffMatrix[i] && typeof payoffMatrix[i][j] === 'number' && !isNaN(payoffMatrix[i][j])) {
+                    newPayoff[i][j] = payoffMatrix[i][j];
+                } else {
+                    newPayoff[i][j] = (i*2 + j*3 - 5); // 示例占位值但数学中性，可显示默认
+                }
+            }
+        }
+        payoffMatrix = newPayoff;
+        let newProbs = new Array(n).fill(0);
+        if (probabilities.length === n) {
+            newProbs = [...probabilities];
+        } else if (probabilities.length > 0) {
+            for (let i=0; i<Math.min(probabilities.length, n); i++) newProbs[i] = probabilities[i];
+            if (n>0) newProbs = autoFillProbabilities(newProbs, n);
+        } else {
+            // 均匀初始
+            let init = 1/n;
+            for(let i=0;i<n;i++) newProbs[i]=init;
+        }
+        probabilities = autoFillProbabilities(newProbs, n);
+        sensitivityActive = false;
+    }
+
+    // 期望值计算 (基于当前概率)
+    function computeEMV() {
+        let emvList = [];
+        for (let i=0; i<m; i++) {
+            let ev = 0;
+            for (let j=0; j<n; j++) {
+                let val = parseFloat(payoffMatrix[i]?.[j]);
+                if (isNaN(val)) val = 0;
+                ev += val * probabilities[j];
+            }
+            emvList.push(ev);
+        }
+        return emvList;
+    }
+
+    // 获取最优推荐
+    function getRecommendation(emvArray) {
+        let maxEv = -Infinity;
+        let bestIdx = -1;
+        for (let i=0; i<emvArray.length; i++) {
+            if (emvArray[i] > maxEv) {
+                maxEv = emvArray[i];
+                bestIdx = i;
+            }
+        }
+        return { bestIdx, maxEv, emvArray };
+    }
+
+    // 敏感性分析：基于给定状态索引和新的概率p_new，其他状态等比例缩放（权重保持原始相对比例）
+    function getSensitivityAdjustedProbs(stateIdx, newProb) {
+        let newProbs = [...probabilities];
+        let oldTarget = newProbs[stateIdx];
+        if (oldTarget === undefined) return newProbs;
+        let delta = newProb - oldTarget;
+        newProbs[stateIdx] = newProb;
+        // 其他索引等比缩放保持总和=1
+        let otherIndices = [];
+        let otherSumOld = 0;
+        for (let i=0; i<n; i++) {
+            if (i !== stateIdx) {
+                otherIndices.push(i);
+                otherSumOld += probabilities[i];
+            }
+        }
+        if (otherSumOld > 1e-9) {
+            let scale = (1 - newProb) / otherSumOld;
+            for (let idx of otherIndices) {
+                newProbs[idx] = probabilities[idx] * scale;
+            }
+        } else {
+            // 极端情况重新分配
+            let equal = (1 - newProb) / (n-1);
+            for (let idx of otherIndices) newProbs[idx] = equal;
+        }
+        // 数值修约保证和=1
+        let sumNow = newProbs.reduce((a,b)=>a+b,0);
+        if(Math.abs(sumNow-1)>0.0001) newProbs[0] += (1-sumNow);
+        return newProbs.map(v => Math.min(1, Math.max(0, v)));
+    }
+
+    // 期望值结算+排序（供敏感性展示）
+    function computeRankingWithProbs(probsForRank) {
+        let emvs = [];
+        for (let i=0; i<m; i++) {
+            let ev = 0;
+            for (let j=0; j<n; j++) ev += parseFloat(payoffMatrix[i]?.[j] || 0) * probsForRank[j];
+            emvs.push(ev);
+        }
+        let indexed = emvs.map((val, idx) => ({ idx, val }));
+        indexed.sort((a,b) => b.val - a.val);
+        return { sorted: indexed, emvs };
+    }
+
+    // 渲染核心界面（基于当前步骤）
+    function renderAll() {
+        const container = document.getElementById('dynamicContent');
+        if (!container) return;
+        let html = '';
+        if (currentStep === 1) {
+            html = getStep1Html();
+        } else if (currentStep === 2) {
+            html = getStep2Html();
+        } else if (currentStep === 3) {
+            html = getStep3Html();
+        }
+        container.innerHTML = html;
+        attachStep1Events();
+        attachStep2Events();
+        attachStep3Events();
+        updateStepProgressUI();
+        if(currentStep===3) updateSensitivitySlidersAndRank();
+    }
+
+    function getStep1Html() {
+        return `
+            <div class="section-title">📐 决策问题规模配置</div>
+            <div class="param-panel">
+                <div class="param-group"><label>📋 方案数量 (2~8)</label><input type="number" id="numAlts" min="2" max="8" value="${m}"></div>
+                <div class="param-group"><label>🌍 自然状态数量 (2~6)</label><input type="number" id="numStates" min="2" max="6" value="${n}"></div>
+                <div><button id="confirmDimsBtn" class="secondary">✓ 确认并进入下一步</button></div>
+            </div>
+            <div class="result-area" style="background:#fefaf5;">
+                <p><span class="badge">📌 说明</span> 设定方案与状态数量后，系统将初始化损益矩阵与概率分布。后续可任意编辑数值。</p>
+                <p>当前预填示例数据为中性值，可在下一步编辑真实损益及概率。</p>
+            </div>
+            <div class="footer-bar"><button id="nextStepFrom1" class="secondary">下一步 → 填写矩阵</button></div>
+        `;
+    }
+
+    function getStep2Html() {
+        // 重新保证矩阵维度与概率长度一致
+        if(payoffMatrix.length !== m || (payoffMatrix[0] && payoffMatrix[0].length !== n)) resetMatricesAndProbs();
+        let tableHtml = `<div class="section-title">📋 损益值矩阵 (支持负数)</div><div class="matrix-table"><table><thead><tr><th>方案 \\ 状态</th>`;
+        for(let j=0;j<n;j++) tableHtml += `<th>状态 S${j+1}</th>`;
+        tableHtml += `</tr></thead><tbody>`;
+        for(let i=0;i<m;i++){
+            tableHtml += `<tr><td style="background:#f2efe9;">📌 方案 A${i+1}</td>`;
+            for(let j=0;j<n;j++){
+                let val = (payoffMatrix[i] && typeof payoffMatrix[i][j] === 'number') ? payoffMatrix[i][j] : 0;
+                tableHtml += `<td><input class="table-input payoff-input" data-i="${i}" data-j="${j}" type="number" step="any" value="${val}"></td>`;
+            }
+            tableHtml += `</tr>`;
+        }
+        tableHtml += `</tbody></table></div>`;
+
+        // 概率编辑
+        tableHtml += `<div class="section-title">🎲 自然状态概率分布 (总和自动归一)</div><div class="matrix-table"><table style="max-width:500px;"><thead><tr><th>状态</th><th>概率 P</th></tr></thead><tbody>`;
+        for(let j=0;j<n;j++){
+            let probVal = (probabilities[j] !== undefined) ? probabilities[j].toFixed(4) : (1/n).toFixed(4);
+            tableHtml += `<tr><td>状态 S${j+1}</td><td><input class="table-input prob-input" data-idx="${j}" type="number" step="0.01" min="0" max="1" value="${parseFloat(probVal)}"></td></tr>`;
+        }
+        tableHtml += `</tbody></table><div class="warning" id="probWarning"></div></div>`;
+        tableHtml += `<div class="footer-bar"><button id="backStep1From2">← 上一步</button><button id="computeAndNextStep3">计算期望值 & 进入决策分析 →</button></div>`;
+        return tableHtml;
+    }
+
+    function getStep3Html() {
+        let emvList = computeEMV();
+        let { bestIdx, maxEv } = getRecommendation(emvList);
+        let bestEvStr = maxEv.toFixed(4);
+        let tableEMV = `<div class="result-area"><div class="best-recommend">✅ 最优方案: <strong>方案 A${bestIdx+1}</strong>  &nbsp;| 期望值 EMV = ${bestEvStr}</div>`;
+        tableEMV += `<div style="margin-top:12px;"><strong>各方案期望值:</strong><br/>` + emvList.map((ev,idx)=>`方案 A${idx+1}: ${ev.toFixed(4)}`).join(' ; ') + `</div></div>`;
+
+        // 敏感性分析面板
+        let stateOptions = '';
+        for(let i=0;i<n;i++) stateOptions += `<option value="${i}">状态 S${i+1} (当前概率 ${probabilities[i].toFixed(3)})</option>`;
+        let sliderVal = sensitivityActive ? sensitivityProbability : probabilities[sensitivityStateIdx];
+        if(!sensitivityActive) sensitivityProbability = probabilities[0];
+        let usedProb = sensitivityActive ? sensitivityProbability : probabilities[sensitivityStateIdx];
+        
+        let sensitivityHtml = `
+            <div class="sensitivity-panel">
+                <h3 style="margin:0 0 0.6rem 0;">🔍 一维概率敏感性分析</h3>
+                <div>选择自然状态: <select id="senStateSelect">${stateOptions}</select></div>
+                <div class="slider-container">
+                    <span style="min-width:80px;">概率 P : </span>
+                    <input type="range" id="probSlider" min="0" max="1" step="0.005" value="${usedProb}">
+                    <span id="sliderValueLabel" style="min-width:70px;">${usedProb.toFixed(3)}</span>
+                </div>
+                <div id="sensitivityRanking" class="ranking-list">⚡ 移动滑块实时更新期望值排序...</div>
+            </div>
+        `;
+
+        let jsonOps = `<div style="margin-top: 1rem; display:flex; gap:1rem;"><button id="saveJsonBtn">💾 保存当前进度(JSON)</button><button id="loadJsonBtn" class="secondary">📂 加载JSON进度</button><input type="file" id="loadFileInput" accept=".json" style="display:none;"></div>`;
+        let navBtns = `<div class="footer-bar"><button id="backStep2From3">← 上一步编辑矩阵</button> ${jsonOps}</div>`;
+
+        return tableEMV + sensitivityHtml + navBtns;
+    }
+
+    // 从UI更新损益矩阵
+    function syncPayoffFromInputs() {
+        for(let i=0;i<m;i++){
+            for(let j=0;j<n;j++){
+                let inp = document.querySelector(`.payoff-input[data-i='${i}'][data-j='${j}']`);
+                if(inp){
+                    let val = parseFloat(inp.value);
+                    if(!isNaN(val)) payoffMatrix[i][j] = val;
+                }
+            }
+        }
+    }
+    function syncProbFromInputs() {
+        let newProbs = [];
+        for(let j=0;j<n;j++){
+            let inp = document.querySelector(`.prob-input[data-idx='${j}']`);
+            if(inp) newProbs.push(parseFloat(inp.value));
+            else newProbs.push(probabilities[j]);
+        }
+        if(newProbs.length === n) {
+            probabilities = autoFillProbabilities(newProbs, n);
+            // 回写显示归一值
+            for(let j=0;j<n;j++){
+                let inp = document.querySelector(`.prob-input[data-idx='${j}']`);
+                if(inp) inp.value = probabilities[j].toFixed(4);
+            }
+            let warn = document.getElementById('probWarning');
+            if(warn) warn.innerText = "✓ 概率已自动归一化总和为1";
+        }
+    }
+
+    // 事件绑定
+    function attachStep1Events() {
+        document.getElementById('confirmDimsBtn')?.addEventListener('click',()=>{
+            let newM = parseInt(document.getElementById('numAlts').value);
+            let newN = parseInt(document.getElementById('numStates').value);
+            if(newM>=2 && newM<=8) m = newM;
+            if(newN>=2 && newN<=6) n = newN;
+            resetMatricesAndProbs();
+            currentStep = 2;
+            renderAll();
+        });
+        document.getElementById('nextStepFrom1')?.addEventListener('click',()=>{
+            let newM = parseInt(document.getElementById('numAlts')?.value)||m;
+            let newN = parseInt(document.getElementById('numStates')?.value)||n;
+            if(newM>=2 && newM<=8) m = newM;
+            if(newN>=2 && newN<=6) n = newN;
+            resetMatricesAndProbs();
+            currentStep = 2;
+            renderAll();
+        });
+    }
+    function attachStep2Events() {
+        // 实时更新损益
+        document.querySelectorAll('.payoff-input').forEach(inp=>{
+            inp.removeEventListener('change', ()=>{}); 
+            inp.addEventListener('change', (e)=>{
+                let i=parseInt(inp.dataset.i), j=parseInt(inp.dataset.j);
+                let val=parseFloat(inp.value);
+                if(!isNaN(val)) payoffMatrix[i][j]=val;
+            });
+        });
+        document.querySelectorAll('.prob-input').forEach(inp=>{
+            inp.addEventListener('change',()=>{
+                syncProbFromInputs();
+            });
+        });
+        document.getElementById('backStep1From2')?.addEventListener('click',()=>{
+            currentStep=1;
+            renderAll();
+        });
+        document.getElementById('computeAndNextStep3')?.addEventListener('click',()=>{
+            syncPayoffFromInputs();
+            syncProbFromInputs();
+            currentStep=3;
+            sensitivityActive=false;
+            sensitivityStateIdx=0;
+            sensitivityProbability = probabilities[0];
+            renderAll();
+        });
+    }
+    function attachStep3Events() {
+        syncPayoffFromInputs();
+        syncProbFromInputs(); 
+        // 敏感性分析下拉与滑块
+        let selectState = document.getElementById('senStateSelect');
+        let slider = document.getElementById('probSlider');
+        let labelSpan = document.getElementById('sliderValueLabel');
+        if(selectState && slider){
+            const updateSensitivity = () => {
+                let stateIdx = parseInt(selectState.value);
+                let newProb = parseFloat(slider.value);
+                sensitivityStateIdx = stateIdx;
+                sensitivityProbability = newProb;
+                sensitivityActive = true;
+                if(labelSpan) labelSpan.innerText = newProb.toFixed(4);
+                updateSensitivityRankingDisplay(stateIdx, newProb);
+            };
+            selectState.addEventListener('change', () => {
+                let idx = parseInt(selectState.value);
+                let cur = probabilities[idx];
+                slider.value = cur;
+                sensitivityProbability = cur;
+                sensitivityActive = true;
+                if(labelSpan) labelSpan.innerText = cur.toFixed(4);
+                updateSensitivityRankingDisplay(idx, cur);
+            });
+            slider.addEventListener('input', () => {
+                let val = parseFloat(slider.value);
+                let idx = parseInt(selectState.value);
+                sensitivityProbability = val;
+                sensitivityActive = true;
+                if(labelSpan) labelSpan.innerText = val.toFixed(4);
+                updateSensitivityRankingDisplay(idx, val);
+            });
+            updateSensitivityRankingDisplay(sensitivityStateIdx, sensitivityProbability);
+        }
+        document.getElementById('saveJsonBtn')?.addEventListener('click', saveToJson);
+        const fileInput = document.getElementById('loadFileInput');
+        document.getElementById('loadJsonBtn')?.addEventListener('click',()=>{fileInput.click();});
+        fileInput?.addEventListener('change', loadFromJson);
+        document.getElementById('backStep2From3')?.addEventListener('click',()=>{
+            currentStep=2;
+            renderAll();
+        });
+    }
+    function updateSensitivityRankingDisplay(stateIdx, newProbVal){
+        let adjProbs = getSensitivityAdjustedProbs(stateIdx, newProbVal);
+        let { sorted, emvs } = computeRankingWithProbs(adjProbs);
+        let rankingHtml = `<strong>📊 敏感性排序 (概率 P(S${stateIdx+1}) = ${newProbVal.toFixed(4)})</strong><br/>`;
+        for(let rank=0; rank<sorted.length; rank++){
+            let item = sorted[rank];
+            rankingHtml += `${rank+1}. 方案 A${item.idx+1} (EMV=${item.val.toFixed(4)})<br/>`;
+        }
+        rankingHtml += `<small>※ 其他状态概率等比例缩放，总和为1</small>`;
+        let rankDiv = document.getElementById('sensitivityRanking');
+        if(rankDiv) rankDiv.innerHTML = rankingHtml;
+    }
+    function updateSensitivitySlidersAndRank(){}
+    
+    function saveToJson() {
+        let data = { m, n, payoffMatrix, probabilities, version: "risk_decider_v1" };
+        let jsonStr = JSON.stringify(data, null, 2);
+        let blob = new Blob([jsonStr], {type:"application/json"});
+        let a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `risk_analysis_${new Date().toISOString().slice(0,19)}.json`;
+        a.click();
+        URL.revokeObjectURL(a.href);
+    }
+    function loadFromJson(e) {
+        let file = e.target.files[0];
+        if(!file) return;
+        let reader = new FileReader();
+        reader.onload = (ev) => {
+            try{
+                let obj = JSON.parse(ev.target.result);
+                if(obj.m && obj.n && obj.payoffMatrix && obj.probabilities){
+                    m = Math.min(8,Math.max(2, obj.m));
+                    n = Math.min(6,Math.max(2, obj.n));
+                    payoffMatrix = obj.payoffMatrix.slice(0,m).map(row=>row.slice(0,n));
+                    probabilities = obj.probabilities.slice(0,n);
+                    if(probabilities.length<n) probabilities = autoFillProbabilities(probabilities,n);
+                    probabilities = autoFillProbabilities(probabilities,n);
+                    resetMatricesAndProbs();
+                    currentStep = 3;
+                    sensitivityActive=false;
+                    sensitivityStateIdx=0;
+                    sensitivityProbability=probabilities[0];
+                    renderAll();
+                } else alert("无效的JSON文件");
+            }catch(err){ alert("解析失败");}
+            fileInput.value = '';
+        };
+        reader.readAsText(file);
+    }
+    function updateStepProgressUI() {
+        let steps = document.querySelectorAll('.step-item');
+        steps.forEach((step, idx) => {
+            let stepNum = idx+1;
+            if(stepNum === currentStep) step.classList.add('active');
+            else step.classList.remove('active');
+            if(stepNum <= currentStep) step.classList.remove('disabled-step');
+            else step.classList.add('disabled-step');
+        });
+    }
+    // 首次渲染
+    (function init() {
+        m=3; n=2;
+        resetMatricesAndProbs();
+        currentStep=1;
+        renderAll();
+    })();
+</script>
+</body>
+</html>

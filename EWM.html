@@ -1,0 +1,801 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>熵权法（EWM）小工具</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600&family=Georgia,serif&display=swap" rel="stylesheet">
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: #f0f4f9;
+            font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+            color: #1e293b;
+            padding: 30px 20px;
+        }
+
+        .app-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: #ffffff;
+            border-radius: 24px;
+            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.08);
+            overflow: hidden;
+            border: 1px solid #e2e8f0;
+        }
+
+        .header {
+            background: #2c5f6e;
+            color: white;
+            padding: 1.5rem 2rem;
+        }
+
+        .title-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            flex-wrap: wrap;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        h1 {
+            font-family: 'Georgia', serif;
+            font-weight: 600;
+            font-size: 1.8rem;
+            letter-spacing: -0.2px;
+            color: white;
+        }
+
+        .toolbar {
+            display: flex;
+            gap: 12px;
+        }
+
+        .tool-btn {
+            background: rgba(255,255,255,0.15);
+            border: 1px solid rgba(255,255,255,0.3);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 40px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 0.85rem;
+        }
+
+        .tool-btn:hover {
+            background: rgba(255,255,255,0.3);
+            transform: translateY(-1px);
+        }
+
+        .progress-section {
+            margin-top: 8px;
+        }
+        .progress-bar-bg {
+            background: rgba(255,255,255,0.25);
+            border-radius: 40px;
+            height: 8px;
+            width: 100%;
+            overflow: hidden;
+        }
+        .progress-fill {
+            background: #facc15;
+            width: 0%;
+            height: 100%;
+            transition: width 0.3s ease;
+        }
+        .step-indicator {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 18px;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+        .step-badge {
+            background: rgba(255,255,255,0.2);
+            padding: 5px 12px;
+            border-radius: 30px;
+            transition: all 0.1s;
+            cursor: pointer;
+        }
+        .step-badge.active {
+            background: #facc15;
+            color: #2c5f6e;
+            font-weight: bold;
+        }
+        .step-badge.completed {
+            background: #2e7d64;
+            color: white;
+        }
+
+        .main-content {
+            padding: 2rem 2rem 2rem 2rem;
+            background: #fefefe;
+            min-height: 550px;
+        }
+
+        .card {
+            background: #f8fafc;
+            border-radius: 20px;
+            border: 1px solid #e2edf2;
+            padding: 1.5rem;
+            margin-bottom: 1.8rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+        }
+
+        .step-title {
+            font-family: 'Georgia', serif;
+            font-size: 1.6rem;
+            font-weight: 600;
+            color: #1e2a3e;
+            border-left: 6px solid #2c5f6e;
+            padding-left: 16px;
+            margin-bottom: 1.5rem;
+        }
+
+        .input-group {
+            margin-bottom: 1.2rem;
+        }
+        label {
+            font-weight: 600;
+            display: inline-block;
+            margin-bottom: 6px;
+            color: #334155;
+        }
+        input, select {
+            padding: 10px 12px;
+            border-radius: 12px;
+            border: 1px solid #cbd5e1;
+            font-size: 0.9rem;
+            background: white;
+        }
+
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            overflow-x: auto;
+            display: block;
+            background: white;
+            border-radius: 16px;
+        }
+        th, td {
+            border: 1px solid #d1d9e8;
+            padding: 10px 8px;
+            text-align: center;
+            font-size: 0.85rem;
+        }
+        th {
+            background: #eef2ff;
+            font-weight: 600;
+            color: #1e293b;
+        }
+        input.matrix-input {
+            width: 80px;
+            text-align: center;
+            border-radius: 8px;
+            padding: 8px 4px;
+        }
+
+        .button-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin: 20px 0 10px;
+        }
+        .btn {
+            background: #f1f5f9;
+            border: 1px solid #cbd5e1;
+            padding: 8px 18px;
+            border-radius: 40px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: 0.1s;
+        }
+        .btn-primary {
+            background: #2c5f6e;
+            border-color: #2c5f6e;
+            color: white;
+        }
+        .btn-primary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .btn-outline {
+            background: white;
+            border: 1px solid #94a3b8;
+        }
+        .result-box {
+            background: white;
+            border-radius: 20px;
+            padding: 1.2rem;
+            margin-top: 1rem;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+        }
+
+        .math {
+            font-family: monospace;
+            font-style: italic;
+            background: #f1f5f9;
+            padding: 2px 6px;
+            border-radius: 8px;
+        }
+
+        .highlight {
+            background: #ffecb3;
+            font-weight: bold;
+            padding: 2px 8px;
+            border-radius: 20px;
+        }
+
+        .warning {
+            color: #b91c1c;
+            background: #fee2e2;
+            padding: 12px;
+            border-radius: 16px;
+            margin: 15px 0;
+        }
+
+        .info-note {
+            background: #e6f7f0;
+            padding: 12px;
+            border-radius: 16px;
+            margin: 15px 0;
+            color: #1e5a3a;
+            font-size: 0.85rem;
+        }
+
+        @media (max-width: 700px) {
+            .main-content { padding: 1rem; }
+            input.matrix-input { width: 60px; }
+        }
+        footer {
+            padding: 1rem 2rem;
+            border-top: 1px solid #e2e8f0;
+            font-size: 0.75rem;
+            color: #64748b;
+            background: #f9fbfd;
+        }
+    </style>
+</head>
+<body>
+<div class="app-container" id="appRoot">
+    <div class="header">
+        <div class="title-row">
+            <h1>📉 熵权法（EWM）</h1>
+            <div class="toolbar">
+                <button class="tool-btn" id="saveProgressBtn">💾 保存进度 (JSON)</button>
+                <input type="file" id="loadFileInput" accept=".json" style="display: none;" />
+                <button class="tool-btn" id="loadProgressBtn">📂 加载进度</button>
+            </div>
+        </div>
+        <div class="progress-section">
+            <div class="progress-bar-bg"><div class="progress-fill" id="progressFill"></div></div>
+            <div class="step-indicator" id="stepIndicator"></div>
+        </div>
+    </div>
+
+    <div class="main-content" id="stepContentArea">
+        <div id="dynamicStepView"></div>
+        <div class="button-group" style="justify-content: space-between; margin-top: 25px;">
+            <button class="btn" id="prevStepBtn" style="visibility: hidden;">◀ 上一步</button>
+            <button class="btn btn-primary" id="nextStepBtn">下一步 ▶</button>
+        </div>
+    </div>
+    <footer>熵权法（Entropy Weight Method）—— 基于数据离散程度的客观赋权法 | 熵值越大 → 信息量越小 → 权重越低</footer>
+</div>
+
+<script>
+    // ---------- 全局状态 ----------
+    let state = {
+        stepIdx: 0,                 // 0: 方案与指标设置, 1: 评价矩阵输入, 2: 结果展示
+        numAlts: 3,                // 方案数量
+        altNames: ['方案A', '方案B', '方案C'],
+        numIndicators: 3,         // 指标数量
+        indicatorNames: ['指标1', '指标2', '指标3'],
+        indicatorTypes: [],       // 'benefit' 或 'cost'，效益型/成本型
+        decisionMatrix: [],       // numAlts x numIndicators
+        stepValid: {}
+    };
+
+    // ---------- 熵权法核心计算 ----------
+    function computeEntropyWeights() {
+        const m = state.numAlts;      // 方案数
+        const n = state.numIndicators; // 指标数
+        let matrix = state.decisionMatrix.map(row => [...row]);
+        
+        // 1. 无量纲化（极差归一化）
+        let normalized = Array(m).fill().map(() => Array(n).fill(0));
+        for (let j = 0; j < n; j++) {
+            let col = matrix.map(row => row[j]);
+            let minVal = Math.min(...col);
+            let maxVal = Math.max(...col);
+            let range = maxVal - minVal;
+            if (range === 0) range = 1;
+            
+            for (let i = 0; i < m; i++) {
+                if (state.indicatorTypes[j] === 'benefit') {
+                    normalized[i][j] = (col[i] - minVal) / range;
+                } else { // cost型
+                    normalized[i][j] = (maxVal - col[i]) / range;
+                }
+                // 避免0值影响熵计算（平移0.0001）
+                if (normalized[i][j] === 0) normalized[i][j] = 0.0001;
+            }
+        }
+        
+        // 2. 计算比重矩阵 p_ij
+        let p = Array(m).fill().map(() => Array(n).fill(0));
+        for (let j = 0; j < n; j++) {
+            let colSum = 0;
+            for (let i = 0; i < m; i++) colSum += normalized[i][j];
+            for (let i = 0; i < m; i++) p[i][j] = normalized[i][j] / colSum;
+        }
+        
+        // 3. 计算熵值 e_j
+        let e = Array(n).fill(0);
+        for (let j = 0; j < n; j++) {
+            let sum = 0;
+            for (let i = 0; i < m; i++) {
+                if (p[i][j] > 0) sum += p[i][j] * Math.log(p[i][j]);
+            }
+            e[j] = - (1 / Math.log(m)) * sum;
+        }
+        
+        // 4. 计算差异系数 d_j = 1 - e_j
+        let d = e.map(val => 1 - val);
+        
+        // 5. 计算权重 w_j
+        let totalD = d.reduce((a, b) => a + b, 0);
+        let weights = d.map(val => val / totalD);
+        
+        // 6. 计算综合得分
+        let scores = Array(m).fill(0);
+        for (let i = 0; i < m; i++) {
+            let score = 0;
+            for (let j = 0; j < n; j++) {
+                score += normalized[i][j] * weights[j];
+            }
+            scores[i] = score;
+        }
+        
+        // 归一化得分（百分制或保留原始）
+        let maxScore = Math.max(...scores);
+        let minScore = Math.min(...scores);
+        let normalizedScores = scores.map(s => (s - minScore) / (maxScore - minScore) * 100);
+        
+        return { normalized, p, e, d, weights, scores, normalizedScores };
+    }
+    
+    // 验证当前步骤
+    function validateCurrentStep() {
+        if (state.stepIdx === 0) {
+            if (state.altNames.length !== state.numAlts) return false;
+            if (state.indicatorNames.length !== state.numIndicators) return false;
+            if (state.indicatorTypes.length !== state.numIndicators) return false;
+            return state.altNames.every(n => n && n.trim() !== "") &&
+                   state.indicatorNames.every(n => n && n.trim() !== "");
+        }
+        if (state.stepIdx === 1) {
+            if (!state.decisionMatrix.length) return false;
+            for (let i = 0; i < state.numAlts; i++) {
+                for (let j = 0; j < state.numIndicators; j++) {
+                    let val = state.decisionMatrix[i]?.[j];
+                    if (val === undefined || val === null || isNaN(val) || val < 0) return false;
+                }
+            }
+            return true;
+        }
+        return true;
+    }
+    
+    function recomputeStepValidAll() {
+        const stepsCount = 3;
+        for (let s = 0; s < stepsCount; s++) {
+            let originalIdx = state.stepIdx;
+            state.stepIdx = s;
+            state.stepValid[s] = validateCurrentStep();
+            state.stepIdx = originalIdx;
+        }
+        renderProgressAndSteps();
+    }
+    
+    // 初始化矩阵
+    function initDecisionMatrix() {
+        let newMat = Array(state.numAlts).fill().map(() => Array(state.numIndicators).fill(1));
+        for (let i = 0; i < state.numAlts; i++) {
+            for (let j = 0; j < state.numIndicators; j++) {
+                if (state.decisionMatrix[i]?.[j] !== undefined) {
+                    newMat[i][j] = state.decisionMatrix[i][j];
+                }
+            }
+        }
+        state.decisionMatrix = newMat;
+    }
+    
+    // 更新维度的副作用
+    function onDimensionsChange() {
+        if (state.altNames.length !== state.numAlts) {
+            let newNames = [];
+            for (let i = 0; i < state.numAlts; i++) {
+                newNames.push(state.altNames[i] || `方案${String.fromCharCode(65 + i)}`);
+            }
+            state.altNames = newNames;
+        }
+        if (state.indicatorNames.length !== state.numIndicators) {
+            let newNames = [];
+            let newTypes = [];
+            for (let j = 0; j < state.numIndicators; j++) {
+                newNames.push(state.indicatorNames[j] || `指标${j + 1}`);
+                newTypes.push(state.indicatorTypes[j] || 'benefit');
+            }
+            state.indicatorNames = newNames;
+            state.indicatorTypes = newTypes;
+        }
+        initDecisionMatrix();
+        recomputeStepValidAll();
+    }
+    
+    // ---------- 渲染模块 ----------
+    function renderCurrentStep() {
+        const container = document.getElementById('dynamicStepView');
+        if (!container) return;
+        
+        if (state.stepIdx === 0) renderStepConfig(container);
+        else if (state.stepIdx === 1) renderStepMatrix(container);
+        else if (state.stepIdx === 2) renderStepResult(container);
+        
+        const prevBtn = document.getElementById('prevStepBtn');
+        const nextBtn = document.getElementById('nextStepBtn');
+        prevBtn.style.visibility = state.stepIdx === 0 ? 'hidden' : 'visible';
+        
+        const isValid = validateCurrentStep();
+        nextBtn.disabled = !isValid;
+        state.stepValid[state.stepIdx] = isValid;
+        renderProgressAndSteps();
+    }
+    
+    function renderProgressAndSteps() {
+        const stepsTotal = 3;
+        let percent = ((state.stepIdx + 1) / stepsTotal) * 100;
+        document.getElementById('progressFill').style.width = `${percent}%`;
+        
+        const stepsDiv = document.getElementById('stepIndicator');
+        stepsDiv.innerHTML = '';
+        const stepNames = ['1. 方案与指标配置', '2. 评价矩阵输入', '3. 熵权结果与排序'];
+        
+        for (let i = 0; i < stepNames.length; i++) {
+            let badge = document.createElement('div');
+            badge.className = 'step-badge';
+            if (i === state.stepIdx) badge.classList.add('active');
+            else if (state.stepValid[i]) badge.classList.add('completed');
+            badge.innerText = stepNames[i];
+            badge.onclick = (function(idx) {
+                return () => { 
+                    if (idx <= state.stepIdx + 1 && idx >= 0) { 
+                        state.stepIdx = idx; 
+                        renderCurrentStep(); 
+                    } 
+                };
+            })(i);
+            stepsDiv.appendChild(badge);
+        }
+    }
+    
+    // 步骤0：配置方案、指标名称和类型
+    function renderStepConfig(container) {
+        container.innerHTML = `
+            <div class="card">
+                <div class="step-title">📋 步骤 1 · 配置方案与评价指标</div>
+                
+                <div class="input-group">
+                    <label>📌 方案数量 (2-10):</label>
+                    <input type="number" id="altCount" min="2" max="10" value="${state.numAlts}" style="width:100px;">
+                </div>
+                <div id="altNamesContainer" style="margin-bottom: 1.5rem;"></div>
+                
+                <div class="input-group">
+                    <label>📊 指标数量 (2-12):</label>
+                    <input type="number" id="indicatorCount" min="2" max="12" value="${state.numIndicators}" style="width:100px;">
+                </div>
+                <div id="indicatorConfigContainer"></div>
+                
+                <div class="info-note">
+                    💡 熵权法说明：熵值越大表示信息离散程度越小，权重越低；效益型指标（数值越大越好），成本型指标（数值越小越好）。
+                </div>
+            </div>
+        `;
+        
+        // 方案数量变化
+        const altCountInput = document.getElementById('altCount');
+        altCountInput.addEventListener('change', (e) => {
+            let newVal = parseInt(e.target.value);
+            if (newVal >= 2 && newVal <= 10 && newVal !== state.numAlts) {
+                state.numAlts = newVal;
+                onDimensionsChange();
+                renderStepConfig(container);
+            }
+        });
+        
+        // 方案名称渲染
+        function renderAltNames() {
+            const containerDiv = document.getElementById('altNamesContainer');
+            containerDiv.innerHTML = `<div style="font-weight:500; margin: 8px 0 6px;">📋 方案名称</div>
+                <div class="name-grid" style="display:flex; flex-wrap:wrap; gap:12px;">${state.altNames.map((n, idx) => `
+                    <div><label>方案 ${idx+1}:</label><input type="text" value="${n.replace(/"/g, '&quot;')}" data-idx="${idx}" class="alt-name-input" style="width:100px;"></div>
+                `).join('')}</div>`;
+            document.querySelectorAll('.alt-name-input').forEach(inp => {
+                inp.addEventListener('change', (e) => {
+                    let idx = parseInt(e.target.dataset.idx);
+                    state.altNames[idx] = e.target.value;
+                    recomputeStepValidAll();
+                });
+            });
+        }
+        
+        // 指标配置渲染
+        function renderIndicators() {
+            const containerDiv = document.getElementById('indicatorConfigContainer');
+            containerDiv.innerHTML = `<div style="font-weight:500; margin: 12px 0 8px;">📈 指标名称与类型</div>
+                <div style="display:flex; flex-direction:column; gap:10px;">${state.indicatorNames.map((name, idx) => `
+                    <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+                        <span style="min-width:50px;">指标${idx+1}:</span>
+                        <input type="text" value="${name.replace(/"/g, '&quot;')}" data-idx="${idx}" class="indicator-name-input" style="width:140px;">
+                        <select data-idx="${idx}" class="indicator-type-select">
+                            <option value="benefit" ${state.indicatorTypes[idx] === 'benefit' ? 'selected' : ''}>效益型 (越大越好)</option>
+                            <option value="cost" ${state.indicatorTypes[idx] === 'cost' ? 'selected' : ''}>成本型 (越小越好)</option>
+                        </select>
+                    </div>
+                `).join('')}</div>`;
+            
+            document.querySelectorAll('.indicator-name-input').forEach(inp => {
+                inp.addEventListener('change', (e) => {
+                    let idx = parseInt(e.target.dataset.idx);
+                    state.indicatorNames[idx] = e.target.value;
+                    recomputeStepValidAll();
+                });
+            });
+            document.querySelectorAll('.indicator-type-select').forEach(sel => {
+                sel.addEventListener('change', (e) => {
+                    let idx = parseInt(e.target.dataset.idx);
+                    state.indicatorTypes[idx] = e.target.value;
+                    recomputeStepValidAll();
+                });
+            });
+        }
+        
+        // 指标数量变化
+        const indicatorCountInput = document.getElementById('indicatorCount');
+        indicatorCountInput.addEventListener('change', (e) => {
+            let newVal = parseInt(e.target.value);
+            if (newVal >= 2 && newVal <= 12 && newVal !== state.numIndicators) {
+                state.numIndicators = newVal;
+                onDimensionsChange();
+                renderStepConfig(container);
+            }
+        });
+        
+        renderAltNames();
+        renderIndicators();
+        setTimeout(() => recomputeStepValidAll(), 20);
+    }
+    
+    // 步骤1：评价矩阵输入
+    function renderStepMatrix(container) {
+        const m = state.numAlts;
+        const n = state.numIndicators;
+        
+        let html = `<div class="card"><div class="step-title">📝 步骤 2 · 评价矩阵输入</div>`;
+        html += `<div class="info-note">请填写 ${m} 个方案 × ${n} 个指标的原始数据。效益型指标（数值越大越好），成本型指标（数值越小越好）。</div>`;
+        html += `<div class="table-wrapper" style="overflow-x:auto;"><table><thead><tr><th>方案 \\ 指标</th>`;
+        for (let j = 0; j < n; j++) {
+            let typeIcon = state.indicatorTypes[j] === 'benefit' ? '↑' : '↓';
+            html += `<th>${state.indicatorNames[j]} ${typeIcon}</th>`;
+        }
+        html += `</tr></thead><tbody>`;
+        
+        for (let i = 0; i < m; i++) {
+            html += `<tr><th style="background:#f1f5f9;">${state.altNames[i]}</th>`;
+            for (let j = 0; j < n; j++) {
+                let val = state.decisionMatrix[i]?.[j] !== undefined ? state.decisionMatrix[i][j] : '';
+                html += `<td><input class="matrix-input" type="number" step="any" value="${val}" data-i="${i}" data-j="${j}" style="width:90px;"></td>`;
+            }
+            html += `</tr>`;
+        }
+        html += `</tbody></table></div>`;
+        html += `<div class="button-group"><button class="btn-outline btn" id="exampleFillBtn">📋 示例填充（方案/指标数据）</button></div></div>`;
+        
+        container.innerHTML = html;
+        
+        // 绑定输入事件
+        document.querySelectorAll('.matrix-input').forEach(inp => {
+            inp.addEventListener('change', (e) => {
+                let i = parseInt(inp.dataset.i);
+                let j = parseInt(inp.dataset.j);
+                let val = parseFloat(inp.value);
+                if (!isNaN(val) && val >= 0) {
+                    if (!state.decisionMatrix[i]) state.decisionMatrix[i] = [];
+                    state.decisionMatrix[i][j] = val;
+                    recomputeStepValidAll();
+                } else if (inp.value === '') {
+                    // 未填不算有效
+                    if (!state.decisionMatrix[i]) state.decisionMatrix[i] = [];
+                    state.decisionMatrix[i][j] = undefined;
+                    recomputeStepValidAll();
+                }
+            });
+        });
+        
+        // 示例填充
+        const exampleBtn = document.getElementById('exampleFillBtn');
+        if (exampleBtn) {
+            exampleBtn.onclick = () => {
+                // 示例数据：3方案×3指标
+                if (state.numAlts === 3 && state.numIndicators === 3) {
+                    state.decisionMatrix = [
+                        [85, 90, 80],
+                        [70, 85, 88],
+                        [92, 78, 82]
+                    ];
+                } else {
+                    // 动态生成随机数据
+                    let newMat = [];
+                    for (let i = 0; i < state.numAlts; i++) {
+                        let row = [];
+                        for (let j = 0; j < state.numIndicators; j++) {
+                            row.push(Math.floor(Math.random() * 80) + 20);
+                        }
+                        newMat.push(row);
+                    }
+                    state.decisionMatrix = newMat;
+                }
+                renderStepMatrix(container);
+            };
+        }
+    }
+    
+    // 步骤2：结果展示
+    function renderStepResult(container) {
+        const result = computeEntropyWeights();
+        
+        let html = `<div class="card"><div class="step-title">🎯 步骤 3 · 熵权法计算结果</div>`;
+        
+        // 权重表格
+        html += `<h3 style="margin: 1rem 0 0.5rem;">📊 指标权重</h3>
+        <table><thead><tr><th>指标</th><th>熵值 eⱼ</th><th>差异系数 dⱼ</th><th>权重 wⱼ</th></tr></thead><tbody>`;
+        for (let j = 0; j < state.numIndicators; j++) {
+            html += `<tr>
+                <td><strong>${state.indicatorNames[j]}</strong> ${state.indicatorTypes[j] === 'benefit' ? '(↑)' : '(↓)'}</td>
+                <td>${result.e[j].toFixed(6)}</td>
+                <td>${result.d[j].toFixed(6)}</td>
+                <td class="highlight">${(result.weights[j] * 100).toFixed(2)}%</td>
+            </tr>`;
+        }
+        html += `</tbody></table>`;
+        
+        // 方案综合得分排序
+        let sorted = state.altNames.map((name, idx) => ({ name, score: result.normalizedScores[idx], rawScore: result.scores[idx] }));
+        sorted.sort((a, b) => b.score - a.score);
+        
+        html += `<h3 style="margin: 1.5rem 0 0.5rem;">🏆 方案综合得分与排序</h3>
+        <table><thead><tr><th>排序</th><th>方案</th><th>归一化得分 (0-100)</th><th>原始综合得分</th></tr></thead><tbody>`;
+        for (let rank = 0; rank < sorted.length; rank++) {
+            let isBest = rank === 0;
+            html += `<tr>
+                <td>${rank + 1}</td>
+                <td>${sorted[rank].name} ${isBest ? '🥇' : ''}</td>
+                <td class="${isBest ? 'highlight' : ''}">${sorted[rank].score.toFixed(2)}</td>
+                <td>${sorted[rank].rawScore.toFixed(6)}</td>
+            </tr>`;
+        }
+        html += `</tbody></table>`;
+        
+        // 解释模块
+        let best = sorted[0];
+        let worst = sorted[sorted.length - 1];
+        html += `<div class="result-box">
+            <strong>📖 结果解释模块</strong><br>
+            根据熵权法计算，${state.numIndicators} 个指标的权重分布如上表所示。权重最高的指标是 <strong>“${state.indicatorNames[result.weights.indexOf(Math.max(...result.weights))]}”</strong>，说明该指标的数据离散程度最大，提供的信息量最多。<br><br>
+            综合得分最高的方案为 <strong>“${best.name}”</strong>（得分 ${best.score.toFixed(2)} 分），得分最低的方案为 “${worst.name}”。熵权法完全基于数据自身特征，适用于多指标客观评价场景。
+        </div>`;
+        
+        // 注意熵值说明
+        html += `<div class="info-note">
+            💡 熵权法原理：熵值接近1时表示指标数据离散程度小，信息量少，权重低；熵值远离1时权重高。
+        </div>`;
+        
+        container.innerHTML = html;
+    }
+    
+    // 保存/加载功能
+    function saveToJSON() {
+        const dump = {
+            version: 1,
+            numAlts: state.numAlts,
+            altNames: state.altNames,
+            numIndicators: state.numIndicators,
+            indicatorNames: state.indicatorNames,
+            indicatorTypes: state.indicatorTypes,
+            decisionMatrix: state.decisionMatrix,
+            stepIdx: state.stepIdx
+        };
+        const dataStr = JSON.stringify(dump, null, 2);
+        const blob = new Blob([dataStr], { type: 'application/json' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `ewm_progress_${new Date().toISOString().slice(0, 19)}.json`;
+        a.click();
+        URL.revokeObjectURL(a.href);
+    }
+    
+    function loadFromJSON(jsonObj) {
+        try {
+            state.numAlts = jsonObj.numAlts;
+            state.altNames = jsonObj.altNames;
+            state.numIndicators = jsonObj.numIndicators;
+            state.indicatorNames = jsonObj.indicatorNames;
+            state.indicatorTypes = jsonObj.indicatorTypes;
+            state.decisionMatrix = jsonObj.decisionMatrix;
+            state.stepIdx = jsonObj.stepIdx;
+            onDimensionsChange();
+            renderCurrentStep();
+        } catch (e) {
+            alert("加载失败: 文件格式错误");
+        }
+    }
+    
+    // 初始化
+    function init() {
+        state.numAlts = 3;
+        state.altNames = ['方案A', '方案B', '方案C'];
+        state.numIndicators = 3;
+        state.indicatorNames = ['指标1', '指标2', '指标3'];
+        state.indicatorTypes = ['benefit', 'benefit', 'benefit'];
+        initDecisionMatrix();
+        state.stepIdx = 0;
+        recomputeStepValidAll();
+        renderCurrentStep();
+    }
+    
+    // 绑定全局按钮
+    document.getElementById('saveProgressBtn').onclick = () => saveToJSON();
+    document.getElementById('loadProgressBtn').onclick = () => document.getElementById('loadFileInput').click();
+    document.getElementById('loadFileInput').onchange = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = ev => {
+            try {
+                loadFromJSON(JSON.parse(ev.target.result));
+            } catch (e) {
+                alert("无效JSON");
+            }
+        };
+        reader.readAsText(file);
+        e.target.value = '';
+    };
+    document.getElementById('nextStepBtn').onclick = () => {
+        if (state.stepIdx + 1 < 3) {
+            state.stepIdx++;
+            renderCurrentStep();
+        } else {
+            alert("已完成所有步骤，可在结果页查看熵权法计算结果");
+        }
+    };
+    document.getElementById('prevStepBtn').onclick = () => {
+        if (state.stepIdx > 0) {
+            state.stepIdx--;
+            renderCurrentStep();
+        }
+    };
+    
+    init();
+</script>
+</body>
+</html>
