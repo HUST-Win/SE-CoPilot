@@ -1,0 +1,950 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>解释结构模型(ISM)学术分析工具 | 系统工程方法论</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600&family=Georgia,serif&display=swap" rel="stylesheet">
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: #f0f4f9;
+            font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+            color: #1e293b;
+            padding: 30px 20px;
+        }
+
+        .app-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: #ffffff;
+            border-radius: 24px;
+            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.08);
+            overflow: hidden;
+            border: 1px solid #e2e8f0;
+        }
+
+        .header {
+            background: #2c3e66;
+            color: white;
+            padding: 1.5rem 2rem;
+        }
+
+        .title-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            flex-wrap: wrap;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        h1 {
+            font-family: 'Georgia', serif;
+            font-weight: 600;
+            font-size: 1.8rem;
+            letter-spacing: -0.2px;
+            color: white;
+        }
+
+        .toolbar {
+            display: flex;
+            gap: 12px;
+        }
+
+        .tool-btn {
+            background: rgba(255,255,255,0.15);
+            border: 1px solid rgba(255,255,255,0.3);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 40px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 0.85rem;
+        }
+
+        .tool-btn:hover {
+            background: rgba(255,255,255,0.3);
+            transform: translateY(-1px);
+        }
+
+        .progress-section {
+            margin-top: 8px;
+        }
+        .progress-bar-bg {
+            background: rgba(255,255,255,0.25);
+            border-radius: 40px;
+            height: 8px;
+            width: 100%;
+            overflow: hidden;
+        }
+        .progress-fill {
+            background: #facc15;
+            width: 0%;
+            height: 100%;
+            transition: width 0.3s ease;
+        }
+        .step-indicator {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 18px;
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+        .step-badge {
+            background: rgba(255,255,255,0.2);
+            padding: 5px 12px;
+            border-radius: 30px;
+            transition: all 0.1s;
+            cursor: pointer;
+        }
+        .step-badge.active {
+            background: #facc15;
+            color: #2c3e66;
+            font-weight: bold;
+        }
+        .step-badge.completed {
+            background: #2e7d64;
+            color: white;
+        }
+        .step-badge.pending {
+            background: rgba(255,255,255,0.2);
+            opacity: 0.8;
+        }
+
+        .main-content {
+            padding: 2rem 2rem 2rem 2rem;
+            background: #fefefe;
+            min-height: 550px;
+        }
+
+        .card {
+            background: #f8fafc;
+            border-radius: 20px;
+            border: 1px solid #e2edf2;
+            padding: 1.5rem;
+            margin-bottom: 1.8rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+        }
+
+        .step-title {
+            font-family: 'Georgia', serif;
+            font-size: 1.6rem;
+            font-weight: 600;
+            color: #1e2a3e;
+            border-left: 6px solid #2c3e66;
+            padding-left: 16px;
+            margin-bottom: 1.5rem;
+        }
+
+        .input-group {
+            margin-bottom: 1.2rem;
+        }
+        label {
+            font-weight: 600;
+            display: inline-block;
+            margin-bottom: 6px;
+            color: #334155;
+        }
+        input, select {
+            padding: 10px 12px;
+            border-radius: 12px;
+            border: 1px solid #cbd5e1;
+            font-size: 0.9rem;
+            background: white;
+        }
+        .name-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-top: 10px;
+        }
+
+        .matrix-wrapper {
+            overflow-x: auto;
+            margin: 15px 0;
+        }
+        .matrix-table {
+            border-collapse: collapse;
+            width: 100%;
+            background: white;
+            border-radius: 16px;
+        }
+        .matrix-table th, .matrix-table td {
+            border: 1px solid #d1d9e8;
+            padding: 10px 8px;
+            text-align: center;
+            font-size: 0.85rem;
+        }
+        .matrix-table th {
+            background: #eef2ff;
+            font-weight: 600;
+            color: #1e293b;
+        }
+        .diag-cell {
+            background: #f1f5f9;
+            color: #94a3b8;
+        }
+        select.relation-select {
+            width: 70px;
+            padding: 6px;
+            border-radius: 8px;
+            border: 1px solid #cbd5e1;
+        }
+
+        .button-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin: 20px 0 10px;
+        }
+        .btn {
+            background: #f1f5f9;
+            border: 1px solid #cbd5e1;
+            padding: 8px 18px;
+            border-radius: 40px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: 0.1s;
+        }
+        .btn-primary {
+            background: #2c3e66;
+            border-color: #2c3e66;
+            color: white;
+        }
+        .btn-primary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .btn-outline {
+            background: white;
+            border: 1px solid #94a3b8;
+        }
+        .btn-accent {
+            background: #2c553c;
+            border-color: #2c553c;
+            color: white;
+        }
+        .result-box {
+            background: white;
+            border-radius: 20px;
+            padding: 1.2rem;
+            margin-top: 1rem;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+        }
+        .level-display {
+            background: #ecfdf5;
+            padding: 12px 16px;
+            border-radius: 16px;
+            margin: 10px 0;
+            border-left: 4px solid #2c553c;
+        }
+        .math {
+            font-family: monospace;
+            font-style: italic;
+        }
+        .highlight {
+            background: #ffecb3;
+            font-weight: bold;
+            padding: 2px 8px;
+            border-radius: 20px;
+        }
+        .warning {
+            color: #b91c1c;
+            background: #fee2e2;
+            padding: 12px;
+            border-radius: 16px;
+            margin: 15px 0;
+        }
+        canvas {
+            background: #ffffff;
+            border-radius: 16px;
+            border: 1px solid #e2edf2;
+            width: 100%;
+            height: auto;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+        }
+        .info-panel {
+            background: #f0f9ff;
+            padding: 15px;
+            border-radius: 14px;
+            margin-top: 20px;
+        }
+        details {
+            margin: 12px 0;
+        }
+        summary {
+            cursor: pointer;
+            font-weight: 600;
+            color: #2c3e66;
+        }
+
+        @media (max-width: 700px) {
+            .main-content { padding: 1rem; }
+            .matrix-table th, .matrix-table td { padding: 6px 4px; }
+            select.relation-select { width: 55px; }
+        }
+        footer {
+            padding: 1rem 2rem;
+            border-top: 1px solid #e2e8f0;
+            font-size: 0.75rem;
+            color: #64748b;
+            background: #f9fbfd;
+        }
+    </style>
+</head>
+<body>
+<div class="app-container" id="appRoot">
+    <div class="header">
+        <div class="title-row">
+            <h1>🔗 解释结构模型（ISM）</h1>
+            <div class="toolbar">
+                <button class="tool-btn" id="saveProgressBtn">💾 保存进度 (JSON)</button>
+                <input type="file" id="loadFileInput" accept=".json" style="display: none;" />
+                <button class="tool-btn" id="loadProgressBtn">📂 加载进度</button>
+            </div>
+        </div>
+        <div class="progress-section">
+            <div class="progress-bar-bg"><div class="progress-fill" id="progressFill"></div></div>
+            <div class="step-indicator" id="stepIndicator"></div>
+        </div>
+    </div>
+
+    <div class="main-content" id="stepContentArea">
+        <div id="dynamicStepView"></div>
+        <div class="button-group" style="justify-content: space-between; margin-top: 25px;">
+            <button class="btn" id="prevStepBtn" style="visibility: hidden;">◀ 上一步</button>
+            <button class="btn btn-primary" id="nextStepBtn">下一步 ▶</button>
+        </div>
+    </div>
+    <footer>🏛️ 基于 Warfield (1974) ISM 方法论 | 传递闭包 + 层级抽取 | 骨架矩阵可选 | 回路检测</footer>
+</div>
+
+<script>
+    // ---------- ISM 全局状态 ----------
+    let state = {
+        stepIdx: 0,                 // 0: 要素设置, 1: 关系判断, 2: 计算展示, 3: 可视化
+        factors: [],               // [{ name, desc }]
+        adjMatrix: [],             // n x n 0/1
+        reachabilityMatrix: [],
+        levels: [],                // [{ level: 1, elements: [索引] }] 顶层在前
+        skeletonMatrix: [],
+        sccs: [],                  // 强连通分量
+        matrixComputed: false,
+        stepValid: {}              // 各步骤完成性校验
+    };
+
+    let totalSteps = 4;
+
+    // ---------- ISM 算法核心 ----------
+    class ISMAnalyzer {
+        static computeReachability(adj, n) {
+            let M = Array(n).fill().map(() => Array(n).fill(0));
+            for (let i = 0; i < n; i++) {
+                for (let j = 0; j < n; j++) {
+                    M[i][j] = (i === j) ? 1 : adj[i][j];
+                }
+            }
+            for (let k = 0; k < n; k++) {
+                for (let i = 0; i < n; i++) {
+                    if (M[i][k]) {
+                        for (let j = 0; j < n; j++) {
+                            if (M[k][j]) M[i][j] = 1;
+                        }
+                    }
+                }
+            }
+            return M;
+        }
+
+        static findLevels(reachMat, n, factorNames) {
+            let tempMat = reachMat.map(row => [...row]);
+            let assigned = new Array(n).fill(false);
+            let levelsResult = [];
+            let levelIdx = 1;
+            let remaining = n;
+            while (remaining > 0) {
+                let levelElems = [];
+                for (let i = 0; i < n; i++) {
+                    if (assigned[i]) continue;
+                    let Rset = [], Qset = [];
+                    for (let j = 0; j < n; j++) {
+                        if (!assigned[j] && tempMat[i][j] === 1) Rset.push(j);
+                        if (!assigned[j] && tempMat[j][i] === 1) Qset.push(j);
+                    }
+                    let intersection = Rset.filter(x => Qset.includes(x));
+                    if (Rset.length === intersection.length && Rset.length > 0) {
+                        levelElems.push(i);
+                    }
+                }
+                if (levelElems.length === 0) break;
+                for (let idx of levelElems) {
+                    assigned[idx] = true;
+                    remaining--;
+                }
+                levelsResult.push({ level: levelIdx, elements: [...levelElems] });
+                for (let i = 0; i < n; i++) {
+                    for (let idx of levelElems) {
+                        if (!assigned[i]) {
+                            tempMat[i][idx] = 0;
+                            tempMat[idx][i] = 0;
+                        }
+                    }
+                }
+                levelIdx++;
+            }
+            levelsResult.reverse();
+            return { levels: levelsResult };
+        }
+
+        static detectSCC(adj, n) {
+            let reach = this.computeReachability(adj, n);
+            let visited = new Array(n).fill(false);
+            let sccs = [];
+            for (let i = 0; i < n; i++) {
+                if (!visited[i]) {
+                    let comp = [];
+                    for (let j = 0; j < n; j++) {
+                        if (reach[i][j] && reach[j][i]) {
+                            if (!visited[j]) comp.push(j);
+                            visited[j] = true;
+                        }
+                    }
+                    if (comp.length > 1) sccs.push(comp);
+                }
+            }
+            return sccs;
+        }
+
+        static computeSkeleton(reach, n) {
+            let skeleton = Array(n).fill().map(() => Array(n).fill(0));
+            for (let i = 0; i < n; i++) {
+                for (let j = 0; j < n; j++) {
+                    if (i !== j && reach[i][j]) {
+                        let transitive = false;
+                        for (let k = 0; k < n; k++) {
+                            if (k !== i && k !== j && reach[i][k] && reach[k][j]) {
+                                transitive = true;
+                                break;
+                            }
+                        }
+                        if (!transitive) skeleton[i][j] = 1;
+                    }
+                }
+            }
+            return skeleton;
+        }
+
+        static computeDriverDependency(reachMat, n) {
+            let drive = new Array(n).fill(0);
+            let depend = new Array(n).fill(0);
+            for (let i = 0; i < n; i++) {
+                drive[i] = reachMat[i].reduce((a,b) => a+b, 0);
+                for (let j = 0; j < n; j++) {
+                    depend[i] += reachMat[j][i];
+                }
+            }
+            return { drive, depend };
+        }
+    }
+
+    // 核心校验函数：步骤1是否有关系
+    function hasAnyRelation() {
+        if (!state.adjMatrix.length) return false;
+        for (let i = 0; i < state.adjMatrix.length; i++) {
+            for (let j = 0; j < state.adjMatrix.length; j++) {
+                if (i !== j && state.adjMatrix[i][j] === 1) return true;
+            }
+        }
+        return false;
+    }
+
+    function validateCurrentStep() {
+        if (state.stepIdx === 0) {
+            if (!state.factors.length) return false;
+            return state.factors.every(f => f.name && f.name.trim() !== "");
+        }
+        if (state.stepIdx === 1) {
+            if (!state.adjMatrix.length) return false;
+            return hasAnyRelation();
+        }
+        if (state.stepIdx === 2) {
+            return state.matrixComputed === true && state.levels.length > 0;
+        }
+        if (state.stepIdx === 3) return true;
+        return true;
+    }
+
+    // 更新导航按钮状态（在每次可能改变时调用）
+    function updateNavigationButtons() {
+        const prevBtn = document.getElementById('prevStepBtn');
+        const nextBtn = document.getElementById('nextStepBtn');
+        if (!prevBtn || !nextBtn) return;
+        prevBtn.style.visibility = state.stepIdx === 0 ? 'hidden' : 'visible';
+        const isValid = validateCurrentStep();
+        nextBtn.disabled = !isValid;
+        state.stepValid[state.stepIdx] = isValid;
+    }
+
+    function recomputeStepValidAll() {
+        let validMap = {};
+        for (let s = 0; s < totalSteps; s++) {
+            let originalIdx = state.stepIdx;
+            state.stepIdx = s;
+            validMap[s] = validateCurrentStep();
+            state.stepIdx = originalIdx;
+        }
+        state.stepValid = validMap;
+        renderProgressAndSteps();
+        updateNavigationButtons();
+    }
+
+    function computeISM() {
+        const n = state.factors.length;
+        if (n === 0) return;
+        const R = ISMAnalyzer.computeReachability(state.adjMatrix, n);
+        state.reachabilityMatrix = R;
+        const levelRes = ISMAnalyzer.findLevels(R, n, state.factors.map(f => f.name));
+        state.levels = levelRes.levels;
+        state.sccs = ISMAnalyzer.detectSCC(state.adjMatrix, n);
+        state.skeletonMatrix = ISMAnalyzer.computeSkeleton(R, n);
+        state.matrixComputed = true;
+    }
+
+    function initFactorsFromCount(count) {
+        let newFactors = [];
+        for (let i = 0; i < count; i++) {
+            let defaultName = `要素 ${String.fromCharCode(65 + i)}`;
+            newFactors.push({ name: defaultName, desc: "" });
+        }
+        state.factors = newFactors;
+        let n = count;
+        state.adjMatrix = Array(n).fill().map(() => Array(n).fill(0));
+        state.matrixComputed = false;
+        state.levels = [];
+        state.sccs = [];
+    }
+
+    function loadExampleSupplyChain() {
+        state.factors = [
+            { name: "供应商产能波动", desc: "供应端不确定性" },
+            { name: "物流中断风险", desc: "运输阻滞" },
+            { name: "需求剧烈波动", desc: "市场需求不稳定" },
+            { name: "库存策略失效", desc: "安全库存不足" },
+            { name: "信息系统故障", desc: "数据延迟" }
+        ];
+        let n = 5;
+        state.adjMatrix = Array(n).fill().map(() => Array(n).fill(0));
+        let edges = [[0,1],[0,2],[1,3],[2,3],[3,4],[2,4]];
+        edges.forEach(([i,j]) => { if(i<n && j<n) state.adjMatrix[i][j]=1; });
+        state.matrixComputed = false;
+        recomputeStepValidAll();
+        renderCurrentStep();
+    }
+    function loadExampleEdu() {
+        state.factors = [
+            { name: "教学清晰度", desc: "教师表达逻辑" },
+            { name: "学生动机", desc: "内在驱动力" },
+            { name: "课堂互动", desc: "参与程度" },
+            { name: "学习资源", desc: "教材/在线" },
+            { name: "考核反馈", desc: "及时评估" }
+        ];
+        let n = 5;
+        state.adjMatrix = Array(n).fill().map(() => Array(n).fill(0));
+        let edges = [[0,2],[1,2],[2,3],[3,4],[1,4],[0,4]];
+        edges.forEach(([i,j]) => { if(i<n && j<n) state.adjMatrix[i][j]=1; });
+        state.matrixComputed = false;
+        recomputeStepValidAll();
+        renderCurrentStep();
+    }
+
+    function renderCurrentStep() {
+        const container = document.getElementById('dynamicStepView');
+        if (!container) return;
+        if (state.stepIdx === 0) renderStepFactors(container);
+        else if (state.stepIdx === 1) renderStepRelations(container);
+        else if (state.stepIdx === 2) renderStepCompute(container);
+        else if (state.stepIdx === 3) renderStepVisualize(container);
+        
+        updateNavigationButtons();
+        renderProgressAndSteps();
+    }
+
+    function renderProgressAndSteps() {
+        const percent = ((state.stepIdx + 1) / totalSteps) * 100;
+        const fillBar = document.getElementById('progressFill');
+        if (fillBar) fillBar.style.width = `${percent}%`;
+        const stepsDiv = document.getElementById('stepIndicator');
+        if (!stepsDiv) return;
+        stepsDiv.innerHTML = '';
+        const stepNames = ['1. 要素设置', '2. 关系判断', '3. 计算展示', '4. 可视化与解释'];
+        for (let i = 0; i < stepNames.length; i++) {
+            let badge = document.createElement('div');
+            badge.className = 'step-badge';
+            if (i === state.stepIdx) badge.classList.add('active');
+            if (state.stepValid[i] === true && i !== state.stepIdx) badge.classList.add('completed');
+            else if (state.stepValid[i] !== true && i !== state.stepIdx) badge.classList.add('pending');
+            badge.innerText = stepNames[i];
+            badge.onclick = (function(idx) { return () => { if (idx <= state.stepIdx + 1 && idx >= 0) { state.stepIdx = idx; renderCurrentStep(); } } })(i);
+            stepsDiv.appendChild(badge);
+        }
+    }
+
+    // 步骤0
+    function renderStepFactors(container) {
+        const n = state.factors.length || 3;
+        container.innerHTML = `
+            <div class="card">
+                <div class="step-title">📋 步骤1 · 系统要素定义</div>
+                <div class="input-group"><label>要素数量 (3~15):</label><input type="number" id="factorCount" min="3" max="15" value="${n}" style="width:100px;"></div>
+                <div class="button-group">
+                    <button class="btn-outline btn" id="initFactorsBtn">🔄 初始化要素</button>
+                    <button class="btn-outline btn" id="exampleSupplyBtn">📦 供应链风险示例</button>
+                    <button class="btn-outline btn" id="exampleEduBtn">🎓 课堂效果示例</button>
+                </div>
+                <div id="factorsTableArea" style="margin-top:20px;"></div>
+            </div>
+        `;
+        document.getElementById('factorCount').addEventListener('change', (e) => {
+            let cnt = parseInt(e.target.value);
+            if (cnt >= 3 && cnt <= 15) initFactorsFromCount(cnt);
+            renderStepFactors(container);
+        });
+        document.getElementById('initFactorsBtn').onclick = () => { initFactorsFromCount(parseInt(document.getElementById('factorCount').value)); renderStepFactors(container); recomputeStepValidAll(); };
+        document.getElementById('exampleSupplyBtn').onclick = () => { loadExampleSupplyChain(); renderStepFactors(container); };
+        document.getElementById('exampleEduBtn').onclick = () => { loadExampleEdu(); renderStepFactors(container); };
+        renderFactorTable();
+    }
+
+    function renderFactorTable() {
+        const container = document.getElementById('factorsTableArea');
+        if (!container) return;
+        let html = `<div class="matrix-wrapper"><table class="matrix-table"><thead><tr><th>#</th><th>要素名称</th><th>描述(可选)</th></thead><tbody>`;
+        state.factors.forEach((f, idx) => {
+            html += `<tr>
+                <td>${idx+1}</td>
+                <td><input type="text" value="${escapeHtml(f.name)}" data-idx="${idx}" class="factor-name-input" style="width:140px;"></td>
+                <td><input type="text" value="${escapeHtml(f.desc)}" data-idx="${idx}" class="factor-desc-input" placeholder="简要描述" style="width:200px;"></td>
+            </tr>`;
+        });
+        html += `</tbody></table></div>`;
+        container.innerHTML = html;
+        document.querySelectorAll('.factor-name-input').forEach(inp => {
+            inp.addEventListener('change', (e) => { let idx = parseInt(e.target.dataset.idx); state.factors[idx].name = e.target.value; recomputeStepValidAll(); });
+        });
+        document.querySelectorAll('.factor-desc-input').forEach(inp => {
+            inp.addEventListener('change', (e) => { let idx = parseInt(e.target.dataset.idx); state.factors[idx].desc = e.target.value; });
+        });
+    }
+
+    // 步骤1: 关系判断 - 关键修复：每次修改后立即更新按钮状态
+    function renderStepRelations(container) {
+        const n = state.factors.length;
+        if (n === 0) { initFactorsFromCount(3); renderStepRelations(container); return; }
+        let html = `<div class="card"><div class="step-title">🔗 步骤2 · 直接影响关系 (邻接矩阵)</div>
+        <div class="button-group">
+            <button class="btn-outline btn" id="symmetryFillBtn">🔄 对称填充 (i→j ⇒ j→i)</button>
+            <button class="btn-outline btn" id="transitiveHintBtn">🧠 传递闭包预览/补全</button>
+            <button class="btn-outline btn" id="checkIsolatedBtn">🔍 孤立要素检查</button>
+            <button class="btn-outline btn" id="clearAllRelBtn">🗑️ 清空所有关系</button>
+        </div>
+        <div class="matrix-wrapper"><table class="matrix-table"><thead><tr><th>→ 影响/被影响 ↓</th>${state.factors.map((f,i)=>`<th>${escapeHtml(f.name)}<br><span style="font-size:0.7rem;">(列j)</span></th>`).join('')}</tr></thead><tbody>`;
+        for (let i = 0; i < n; i++) {
+            html += `<tr><th style="background:#eef2ff;">${escapeHtml(state.factors[i].name)} <br><span style="font-size:0.65rem;">(行i)</span></th>`;
+            for (let j = 0; j < n; j++) {
+                let val = state.adjMatrix[i][j];
+                let selectedYes = val===1 ? 'selected' : '';
+                let selectedNo = val===0 ? 'selected' : '';
+                let disabled = (i===j) ? 'disabled' : '';
+                html += `<td>${ i===j ? '—' : `<select class="relation-select" data-i="${i}" data-j="${j}" ${disabled}>
+                            <option value="0" ${selectedNo}>否</option><option value="1" ${selectedYes}>是</option>
+                        </select>` }</td>`;
+            }
+            html += `</tr>`;
+        }
+        html += `</tbody></table></div><div class="info-panel"><i class="math">A[i][j]=1</i> 表示要素 i 直接影响要素 j。</div></div>`;
+        container.innerHTML = html;
+        
+        // 绑定关系变更事件 - 关键：每次修改后更新按钮状态
+        const attachEvents = () => {
+            document.querySelectorAll('.relation-select').forEach(sel => {
+                // 移除旧监听，避免重复
+                sel.removeEventListener('change', sel._listener);
+                const listener = (e) => {
+                    let i = parseInt(sel.dataset.i), j = parseInt(sel.dataset.j);
+                    state.adjMatrix[i][j] = parseInt(sel.value);
+                    state.matrixComputed = false;
+                    // 关键：立即更新步骤有效性和按钮状态
+                    recomputeStepValidAll();
+                    updateNavigationButtons();
+                };
+                sel.addEventListener('change', listener);
+                sel._listener = listener;
+            });
+        };
+        
+        attachEvents();
+        
+        // 绑定按钮事件
+        const symBtn = document.getElementById('symmetryFillBtn');
+        if (symBtn) symBtn.onclick = () => { 
+            for (let i = 0; i < state.adjMatrix.length; i++)
+                for (let j = 0; j < state.adjMatrix.length; j++)
+                    if (state.adjMatrix[i][j] === 1) state.adjMatrix[j][i] = 1;
+            state.matrixComputed = false;
+            renderStepRelations(container);
+        };
+        const transBtn = document.getElementById('transitiveHintBtn');
+        if (transBtn) transBtn.onclick = () => {
+            let n2 = state.adjMatrix.length;
+            let newMat = state.adjMatrix.map(row => [...row]);
+            let changed = false;
+            for (let k = 0; k < n2; k++)
+                for (let i = 0; i < n2; i++)
+                    for (let j = 0; j < n2; j++)
+                        if (newMat[i][k] && newMat[k][j] && !newMat[i][j]) { newMat[i][j] = 1; changed = true; }
+            if (changed) {
+                state.adjMatrix = newMat;
+                alert("已自动补充传递闭包中隐含的关系（基于当前邻接矩阵）。");
+            } else alert("无新增传递关系。");
+            state.matrixComputed = false;
+            renderStepRelations(container);
+        };
+        const isolatedBtn = document.getElementById('checkIsolatedBtn');
+        if (isolatedBtn) isolatedBtn.onclick = () => {
+            let n2 = state.adjMatrix.length;
+            let isolated = [];
+            for (let i = 0; i < n2; i++) {
+                let out = state.adjMatrix[i].some(v => v === 1);
+                let inp = state.adjMatrix.some(row => row[i] === 1);
+                if (!out && !inp) isolated.push(state.factors[i].name);
+            }
+            alert(isolated.length ? `孤立要素: ${isolated.join(', ')}` : "无孤立要素，每个要素至少参与影响或被影响。");
+        };
+        const clearBtn = document.getElementById('clearAllRelBtn');
+        if (clearBtn) clearBtn.onclick = () => {
+            for (let i = 0; i < state.adjMatrix.length; i++)
+                for (let j = 0; j < state.adjMatrix.length; j++)
+                    if (i !== j) state.adjMatrix[i][j] = 0;
+            state.matrixComputed = false;
+            renderStepRelations(container);
+        };
+        
+        // 确保按钮状态正确更新
+        setTimeout(() => { recomputeStepValidAll(); updateNavigationButtons(); }, 10);
+    }
+
+    // 步骤2: 计算展示
+    function renderStepCompute(container) {
+        if (!state.matrixComputed) computeISM();
+        let html = `<div class="card"><div class="step-title">📐 步骤3 · 可达矩阵与层级划分</div>
+        <details><summary><b>📊 可达矩阵 (传递闭包)</b></summary>${renderMatrixHtml(state.reachabilityMatrix, "可达矩阵 R")}</details>
+        <details><summary><b>🔍 层级划分详细过程 (R(i), Q(i), C(i))</b></summary><div id="levelProcessDetail"></div></details>
+        <div class="level-display"><b>🏷️ 最终层级表 (顶层 → 底层)</b><ul id="finalLevelList"></ul></div>
+        <details><summary><b>🧬 骨架矩阵 (剔除传递冗余)</b></summary>${renderMatrixHtml(state.skeletonMatrix, "骨架矩阵 A'")}</details>
+        <div class="result-box"><b>📈 驱动力-依赖性分析</b><div id="driverDependencyInfo"></div></div>
+        </div>`;
+        container.innerHTML = html;
+        displayLevelProcess();
+        displayFinalLevels();
+        displayDriverDependency();
+        recomputeStepValidAll();
+    }
+    
+    function renderMatrixHtml(mat, title) {
+        if (!mat || !mat.length) return "<div>暂无数据</div>";
+        let n = mat.length;
+        let html = `<div class="matrix-wrapper"><table class="matrix-table"><thead><tr><th>${title}</th>${state.factors.map(f=>`<th>${escapeHtml(f.name)}</th>`).join('')}</tr></thead><tbody>`;
+        for(let i=0;i<n;i++){ html+=`<tr><th>${escapeHtml(state.factors[i].name)}</th>`; for(let j=0;j<n;j++) html+=`<td>${mat[i][j]}</td>`; html+=`</tr>`; }
+        html+=`</tbody></table></div>`;
+        return html;
+    }
+    
+    function displayLevelProcess() {
+        const container = document.getElementById('levelProcessDetail');
+        if (!container) return;
+        let n = state.factors.length;
+        let tempAssigned = new Array(n).fill(false);
+        let tempMat = state.reachabilityMatrix.map(r=>[...r]);
+        let levelIdx = 1;
+        let html = '';
+        let levelsReverse = [...state.levels].reverse();
+        for (let lev of levelsReverse) {
+            let elems = lev.elements;
+            html += `<div style="border-left: 6px solid #2c553c; margin:12px 0; padding-left:16px;"><b>第 ${levelIdx} 层</b> (自顶向下): 要素 ${elems.map(idx=>state.factors[idx].name).join(', ')}<br>`;
+            for (let i of elems) {
+                let Rset=[], Qset=[];
+                for(let j=0;j<n;j++){ if(state.reachabilityMatrix[i][j]===1) Rset.push(state.factors[j].name); }
+                for(let j=0;j<n;j++){ if(state.reachabilityMatrix[j][i]===1) Qset.push(state.factors[j].name); }
+                let intersect = Rset.filter(x=>Qset.includes(x));
+                html += `<span class="math">R(${state.factors[i].name}) = {${Rset.join(',')}} ; Q = {${Qset.join(',')}} ; R∩Q = {${intersect.join(',')}} → 满足条件</span><br>`;
+            }
+            html += `</div>`;
+            levelIdx++;
+        }
+        container.innerHTML = html || '<i>层级划分已执行</i>';
+    }
+    
+    function displayFinalLevels() {
+        let ul = document.getElementById('finalLevelList');
+        if(!ul) return;
+        ul.innerHTML = '';
+        state.levels.forEach(lev => {
+            let li = document.createElement('li');
+            li.innerHTML = `<b>Level ${lev.level}</b>: ${lev.elements.map(idx=>state.factors[idx].name).join(' → ')}`;
+            ul.appendChild(li);
+        });
+    }
+    
+    function displayDriverDependency() {
+        let div = document.getElementById('driverDependencyInfo');
+        if(!div) return;
+        let { drive, depend } = ISMAnalyzer.computeDriverDependency(state.reachabilityMatrix, state.factors.length);
+        let maxDrive = Math.max(...drive);
+        let maxDriveIdx = drive.indexOf(maxDrive);
+        let maxDepend = Math.max(...depend);
+        let maxDependIdx = depend.indexOf(maxDepend);
+        div.innerHTML = `<span class="math">驱动力 (可达集大小)</span>: ${state.factors.map((f,i)=>`${f.name}:${drive[i]}`).join(', ')}<br>
+        <span class="math">依赖性 (先行集大小)</span>: ${state.factors.map((f,i)=>`${f.name}:${depend[i]}`).join(', ')}<br>
+        🔥 根源驱动要素: ${state.factors[maxDriveIdx].name} (驱动力=${maxDrive}) &nbsp;| 🎯 结果依赖要素: ${state.factors[maxDependIdx].name} (依赖性=${maxDepend})`;
+        if(state.sccs.length) div.innerHTML += `<div class="warning">⚠️ 强连通分量(回路): ${state.sccs.map(c=>`[${c.map(i=>state.factors[i].name).join(',')}]`).join(', ')} 应视为整体分析。</div>`;
+    }
+
+    // 步骤3: 可视化
+    function renderStepVisualize(container) {
+        if (!state.matrixComputed) computeISM();
+        container.innerHTML = `<div class="card"><div class="step-title">🌐 步骤4 · 有向层级拓扑图</div>
+        <canvas id="ismCanvas" width="900" height="550" style="width:100%; height:auto; max-width:1000px; background:#fff; border:1px solid #ddd;"></canvas>
+        <div class="info-panel" id="explanationText"></div>
+        <div class="button-group"><button id="exportPNG" class="btn-outline btn">📸 导出为PNG</button>
+        <button id="exportCSV" class="btn-outline btn">📎 层级表CSV</button></div></div>`;
+        drawHierarchyGraph();
+        generateExplanation();
+        document.getElementById('exportPNG').onclick = () => { let canvas=document.getElementById('ismCanvas'); let link=document.createElement('a'); link.download='ISM_hierarchy.png'; link.href=canvas.toDataURL(); link.click(); };
+        document.getElementById('exportCSV').onclick = () => exportLevelsCSV();
+        recomputeStepValidAll();
+    }
+
+    function drawHierarchyGraph() {
+        let canvas = document.getElementById('ismCanvas');
+        if(!canvas) return;
+        let ctx = canvas.getContext('2d');
+        let w = canvas.clientWidth, h = canvas.clientHeight;
+        canvas.width = w; canvas.height = h;
+        ctx.clearRect(0,0,w,h);
+        if(!state.levels.length) return;
+        let levelMap = new Map();
+        state.levels.forEach(lev => { lev.elements.forEach(el => levelMap.set(el, lev.level)); });
+        let maxLevel = Math.max(...Array.from(levelMap.values()));
+        let nodesPerLevel = new Map();
+        state.factors.forEach((_,idx) => { let lvl=levelMap.get(idx)||1; let arr=nodesPerLevel.get(lvl)||[]; arr.push(idx); nodesPerLevel.set(lvl,arr); });
+        let positions = [];
+        for(let lvl=1; lvl<=maxLevel; lvl++) {
+            let nodes = nodesPerLevel.get(lvl)||[];
+            let y = 60 + (maxLevel - lvl) * (h-120)/Math.max(1,maxLevel-1);
+            let xStep = w/(nodes.length+1);
+            nodes.forEach((node, idx) => { positions[node] = { x: xStep*(idx+1), y: y }; });
+        }
+        for(let i=0;i<state.factors.length;i++) {
+            for(let j=0;j<state.factors.length;j++) {
+                if(state.skeletonMatrix[i][j]===1 && positions[i] && positions[j]) {
+                    ctx.beginPath(); ctx.moveTo(positions[i].x, positions[i].y);
+                    ctx.lineTo(positions[j].x, positions[j].y);
+                    ctx.strokeStyle = '#6c8b5e'; ctx.lineWidth = 2;
+                    ctx.stroke(); drawArrowhead(ctx, positions[i].x, positions[i].y, positions[j].x, positions[j].y);
+                }
+            }
+        }
+        for(let i=0;i<state.factors.length;i++) {
+            let p = positions[i];
+            if(!p) continue;
+            ctx.beginPath(); ctx.arc(p.x, p.y, 28, 0, 2*Math.PI); ctx.fillStyle='#eef2ff'; ctx.fill(); ctx.strokeStyle='#2c3e66'; ctx.lineWidth=2; ctx.stroke();
+            ctx.fillStyle='#1e293b'; ctx.font='bold 12px "Inter"'; ctx.fillText(state.factors[i].name, p.x-20, p.y+4);
+        }
+    }
+    
+    function drawArrowhead(ctx, fromX, fromY, toX, toY) {
+        let angle = Math.atan2(toY - fromY, toX - fromX);
+        let arrowX = toX - 15 * Math.cos(angle), arrowY = toY - 15 * Math.sin(angle);
+        ctx.beginPath(); ctx.moveTo(arrowX, arrowY);
+        ctx.lineTo(arrowX - 8 * Math.cos(angle - Math.PI/6), arrowY - 8 * Math.sin(angle - Math.PI/6));
+        ctx.lineTo(arrowX - 8 * Math.cos(angle + Math.PI/6), arrowY - 8 * Math.sin(angle + Math.PI/6));
+        ctx.fillStyle = '#2c3e66'; ctx.fill();
+    }
+    
+    function generateExplanation() {
+        let n=state.factors.length, L=state.levels.length;
+        let topEls = state.levels[0]?.elements.map(i=>state.factors[i].name).join(',') || '无';
+        let bottomEls = state.levels[state.levels.length-1]?.elements.map(i=>state.factors[i].name).join(',') || '无';
+        let sccText = state.sccs.length ? `<strong>⚠️ 强连通分量回路:</strong> ${state.sccs.map(scc=>`[${scc.map(i=>state.factors[i].name)}]`).join(', ')} 应视为整体。` : '未检测到强连通回路。';
+        let { drive, depend } = ISMAnalyzer.computeDriverDependency(state.reachabilityMatrix, n);
+        let maxDriveIdx = drive.indexOf(Math.max(...drive));
+        let maxDepIdx = depend.indexOf(Math.max(...depend));
+        document.getElementById('explanationText').innerHTML = `<i class="math">📖 系统包含${n}个要素，划分出${L}个层级。顶层结果要素：【${topEls}】；底层根本驱动要素：【${bottomEls}】。建议优先干预底层要素。${sccText}<br>✨ 驱动力最高: ${state.factors[maxDriveIdx].name}; 依赖性最高: ${state.factors[maxDepIdx].name}。基于Warfield(1974)方法论，骨架矩阵保留最简结构。</i>`;
+    }
+    
+    function exportLevelsCSV() {
+        let csv = "层级,要素名称\n";
+        state.levels.forEach(lev => { lev.elements.forEach(idx => { csv += `${lev.level},${state.factors[idx].name}\n`; }); });
+        let blob = new Blob([csv], {type:"text/csv"}); let a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = "ISM_levels.csv"; a.click();
+    }
+    
+    function escapeHtml(str) { return String(str).replace(/[&<>]/g, function(m){ if(m==='&') return '&amp;'; if(m==='<') return '&lt;'; if(m==='>') return '&gt;'; return m;}); }
+
+    // 保存/加载
+    function saveToJSON() {
+        let dump = { version:1, factors:state.factors, adjMatrix:state.adjMatrix, stepIdx:state.stepIdx };
+        let blob = new Blob([JSON.stringify(dump,null,2)], {type:'application/json'});
+        let a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `ism_progress_${new Date().toISOString().slice(0,19)}.json`; a.click(); URL.revokeObjectURL(a.href);
+    }
+    
+    function loadFromJSON(jsonObj) {
+        try{
+            state.factors = jsonObj.factors;
+            state.adjMatrix = jsonObj.adjMatrix;
+            state.stepIdx = jsonObj.stepIdx || 0;
+            state.matrixComputed = false;
+            recomputeStepValidAll();
+            renderCurrentStep();
+        } catch(e){ alert("加载失败"); }
+    }
+
+    // 事件绑定
+    document.getElementById('saveProgressBtn').onclick = () => saveToJSON();
+    document.getElementById('loadProgressBtn').onclick = () => document.getElementById('loadFileInput').click();
+    document.getElementById('loadFileInput').onchange = (e) => {
+        const file = e.target.files[0];
+        if(!file) return;
+        const reader = new FileReader();
+        reader.onload = ev => { try{ loadFromJSON(JSON.parse(ev.target.result)); } catch(err){ alert("无效JSON"); } };
+        reader.readAsText(file);
+        e.target.value = '';
+    };
+    document.getElementById('nextStepBtn').onclick = () => { 
+        if (state.stepIdx + 1 < totalSteps) {
+            if (validateCurrentStep()) {
+                state.stepIdx++; 
+                renderCurrentStep();
+            } else {
+                alert("当前步骤尚未完成，请完善后继续。");
+            }
+        } else {
+            alert("已完成全部步骤");
+        }
+    };
+    document.getElementById('prevStepBtn').onclick = () => { if(state.stepIdx>0) { state.stepIdx--; renderCurrentStep(); } };
+
+    // 初始化
+    initFactorsFromCount(3);
+    recomputeStepValidAll();
+    renderCurrentStep();
+</script>
+</body>
+</html>
