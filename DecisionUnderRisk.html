@@ -3,106 +3,169 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-    <title>风险决策分析工具：期望值准则 + 敏感性分析 </title>
+    <title>风险决策分析工具：期望值准则 </title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600&family=Georgia,serif&display=swap" rel="stylesheet">
     <style>
         * {
             box-sizing: border-box;
+            margin: 0;
+            padding: 0;
         }
 
         body {
-            background: #f0f4f8;
-            font-family: 'Segoe UI', 'Roboto', 'Georgia', 'Times New Roman', serif;
-            margin: 0;
-            padding: 2rem 1.5rem;
-            color: #1e2a3e;
+            background-color: #f0f4f9;
+            font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+            color: #1e293b;
+            padding: 30px 20px;
         }
 
-        /* 学术深蓝 + 米白基调 */
-        .container {
+        .app-container {
             max-width: 1400px;
             margin: 0 auto;
-            background: #fefaf5;  /* 暖米白 */
-            border-radius: 1.25rem;
+            background: #ffffff;
+            border-radius: 24px;
             box-shadow: 0 12px 30px rgba(0, 0, 0, 0.08);
             overflow: hidden;
             border: 1px solid #e2e8f0;
         }
 
-        /* 头部区域 */
         .header {
-            background: #0b2b3b;
+            background: #2c3e66;
+            color: white;
             padding: 1.5rem 2rem;
-            color: #f8f3e9;
-            border-bottom: 3px solid #c9a86b;
-        }
-        .header h1 {
-            margin: 0 0 0.25rem;
-            font-weight: 500;
-            letter-spacing: -0.3px;
-            font-size: 1.8rem;
-        }
-        .header p {
-            margin: 0;
-            opacity: 0.8;
-            font-style: italic;
-            font-size: 0.95rem;
         }
 
-        /* 步骤条 */
-        .step-progress {
+        .title-row {
             display: flex;
-            background: #e9edf2;
-            padding: 0;
-            margin: 0;
-            list-style: none;
-            border-bottom: 1px solid #cfdde6;
+            justify-content: space-between;
+            align-items: baseline;
+            flex-wrap: wrap;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
         }
-        .step-item {
-            flex: 1;
-            text-align: center;
-            padding: 0.9rem 0.2rem;
-            background: #eef2f7;
-            color: #3e5a6b;
+
+        h1 {
+            font-family: 'Georgia', serif;
+            font-weight: 600;
+            font-size: 1.8rem;
+            letter-spacing: -0.2px;
+            color: white;
+        }
+
+        .toolbar {
+            display: flex;
+            gap: 12px;
+        }
+
+        .tool-btn {
+            background: rgba(255,255,255,0.15);
+            border: 1px solid rgba(255,255,255,0.3);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 40px;
             font-weight: 500;
-            font-size: 0.9rem;
+            cursor: pointer;
             transition: all 0.2s;
-            border-right: 1px solid #dce3ec;
-            cursor: default;
+            font-size: 0.85rem;
         }
-        .step-item.active {
-            background: #fefaf5;
-            color: #0b2b3b;
-            border-bottom: 3px solid #c9a86b;
+
+        .tool-btn:hover {
+            background: rgba(255,255,255,0.3);
+            transform: translateY(-1px);
+        }
+
+        .progress-section {
+            margin-top: 8px;
+        }
+        .progress-bar-bg {
+            background: rgba(255,255,255,0.25);
+            border-radius: 40px;
+            height: 8px;
+            width: 100%;
+            overflow: hidden;
+        }
+        .progress-fill {
+            background: #facc15;
+            width: 0%;
+            height: 100%;
+            transition: width 0.3s ease;
+        }
+        .step-indicator {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 18px;
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+        .step-badge {
+            background: rgba(255,255,255,0.2);
+            padding: 5px 12px;
+            border-radius: 30px;
+            transition: all 0.1s;
+            cursor: pointer;
+        }
+        .step-badge.active {
+            background: #facc15;
+            color: #2c3e66;
+            font-weight: bold;
+        }
+        .step-badge.completed {
+            background: #2e7d64;
+            color: white;
+        }
+        .step-badge.pending {
+            background: rgba(255,255,255,0.2);
+            opacity: 0.8;
+        }
+
+        .main-content {
+            padding: 2rem 2rem 2rem 2rem;
+            background: #fefefe;
+            min-height: 550px;
+        }
+
+        .card {
+            background: #f8fafc;
+            border-radius: 20px;
+            border: 1px solid #e2edf2;
+            padding: 1.5rem;
+            margin-bottom: 1.8rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+        }
+
+        .step-title {
+            font-family: 'Georgia', serif;
+            font-size: 1.6rem;
             font-weight: 600;
-        }
-        .step-item.disabled-step {
-            opacity: 0.6;
-        }
-        .step-item.completed {
-            background: #e0e9f0;
-            color: #1f5e6e;
+            color: #1e2a3e;
+            border-left: 6px solid #2c3e66;
+            padding-left: 16px;
+            margin-bottom: 1.5rem;
         }
 
-        /* 主内容区 */
-        .main-card {
-            padding: 1.8rem 2rem 2.2rem;
+        .input-group {
+            margin-bottom: 1.2rem;
         }
-
-        .section-title {
+        label {
             font-weight: 600;
-            font-size: 1.3rem;
-            border-left: 5px solid #c9a86b;
-            padding-left: 1rem;
-            margin: 1.2rem 0 1.2rem 0;
-            color: #1e3a4a;
+            display: inline-block;
+            margin-bottom: 6px;
+            color: #334155;
         }
-
+        input, select {
+            padding: 10px 12px;
+            border-radius: 12px;
+            border: 1px solid #cbd5e1;
+            font-size: 0.9rem;
+            background: white;
+        }
         .param-panel {
             display: flex;
             gap: 1.5rem;
             flex-wrap: wrap;
             margin-bottom: 1.5rem;
-            background: #f7f3ec;
+            background: #f1f5f9;
             padding: 1rem 1.5rem;
             border-radius: 1rem;
             align-items: flex-end;
@@ -112,74 +175,33 @@
             flex-direction: column;
             gap: 0.4rem;
         }
-        .param-group label {
-            font-weight: 600;
-            font-size: 0.85rem;
-            color: #2c4c5c;
-        }
-        .param-group input {
-            width: 110px;
-            padding: 0.5rem;
-            border: 1px solid #cfdde6;
-            border-radius: 8px;
-            background: white;
-            font-size: 1rem;
-        }
-        button {
-            background: #1f5e6e;
-            border: none;
-            color: white;
-            padding: 0.5rem 1rem;
-            border-radius: 40px;
-            font-weight: 500;
-            cursor: pointer;
-            transition: 0.15s;
-            font-family: inherit;
-            border: 1px solid #1d5564;
-        }
-        button:hover {
-            background: #0b3b48;
-            transform: translateY(-1px);
-        }
-        button.secondary {
-            background: #bc9a6c;
-            border-color: #a88658;
-        }
-        button.secondary:hover {
-            background: #a57248;
-        }
-
-        .matrix-table {
+        .matrix-wrapper {
             overflow-x: auto;
-            margin: 1.2rem 0;
+            margin: 15px 0;
         }
-        table {
-            width: 100%;
+        .matrix-table {
             border-collapse: collapse;
-            font-size: 0.9rem;
+            width: 100%;
             background: white;
-            border-radius: 14px;
-            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+            border-radius: 16px;
         }
-        th, td {
-            border: 1px solid #dce3ec;
-            padding: 0.7rem 0.5rem;
+        .matrix-table th, .matrix-table td {
+            border: 1px solid #d1d9e8;
+            padding: 10px 8px;
             text-align: center;
+            font-size: 0.85rem;
         }
-        th {
-            background: #eef2f7;
+        .matrix-table th {
+            background: #eef2ff;
             font-weight: 600;
-            color: #1f4e5e;
+            color: #1e293b;
         }
-        input.table-input {
+        .table-input {
             width: 85px;
             padding: 0.4rem;
             text-align: center;
             border: 1px solid #cbdbe0;
             border-radius: 6px;
-        }
-        .prob-row {
-            background: #fefaf5;
         }
         .warning {
             color: #bc5a2c;
@@ -200,8 +222,8 @@
             font-weight: 600;
         }
         .sensitivity-panel {
-            margin-top: 2rem;
-            background: #f8f3ec;
+            margin-top: 1rem;
+            background: #f1f5f9;
             padding: 1.2rem 1.5rem;
             border-radius: 1rem;
         }
@@ -226,63 +248,105 @@
             border-radius: 12px;
             font-weight: 500;
         }
-        .footer-bar {
+        .button-group {
             display: flex;
-            justify-content: flex-end;
-            gap: 1rem;
-            margin-top: 1.5rem;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin: 20px 0 10px;
+        }
+        .btn {
+            background: #f1f5f9;
+            border: 1px solid #cbd5e1;
+            padding: 8px 18px;
+            border-radius: 40px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: 0.1s;
+        }
+        .btn-primary {
+            background: #2c3e66;
+            border-color: #2c3e66;
+            color: white;
+        }
+        .btn-primary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .btn-outline {
+            background: white;
+            border: 1px solid #94a3b8;
+        }
+        .btn-accent {
+            background: #2c553c;
+            border-color: #2c553c;
+            color: white;
+        }
+        .info-panel {
+            background: #f0f9ff;
+            padding: 15px;
+            border-radius: 14px;
+            margin-top: 20px;
+        }
+        footer {
+            padding: 1rem 2rem;
             border-top: 1px solid #e2e8f0;
-            padding-top: 1.5rem;
+            font-size: 0.75rem;
+            color: #64748b;
+            background: #f9fbfd;
         }
         @media (max-width: 760px) {
-            body { padding: 1rem; }
-            .main-card { padding: 1rem; }
-            input.table-input { width: 65px; }
-        }
-        hr {
-            margin: 1rem 0;
+            .main-content { padding: 1rem; }
+            .table-input { width: 65px; }
         }
     </style>
 </head>
 <body>
-<div class="container">
+<div class="app-container" id="appRoot">
     <div class="header">
-        <h1>🎲 风险型决策工具 </h1>
-        <p>基于期望值准则</p>
+        <div class="title-row">
+            <h1>🎲 风险决策分析工具</h1>
+            <div class="toolbar">
+                <button class="tool-btn" id="saveProgressBtn">💾 保存进度 (JSON)</button>
+                <input type="file" id="loadFileInput" accept=".json" style="display: none;" />
+                <button class="tool-btn" id="loadProgressBtn">📂 加载进度</button>
+            </div>
+        </div>
+        <div class="progress-section">
+            <div class="progress-bar-bg"><div class="progress-fill" id="progressFill"></div></div>
+            <div class="step-indicator" id="stepIndicator"></div>
+        </div>
     </div>
-    <ul class="step-progress" id="stepProgress">
-        <li class="step-item" data-step="1">步骤 1 · 设置维度</li>
-        <li class="step-item" data-step="2">步骤 2 · 损益矩阵 & 概率</li>
-        <li class="step-item" data-step="3">步骤 3 · 决策 & 敏感性分析</li>
-    </ul>
-    <div class="main-card" id="appContainer">
-        <!-- 动态渲染区域 -->
-        <div id="dynamicContent"></div>
+
+    <div class="main-content" id="stepContentArea">
+        <div id="dynamicStepView"></div>
+        <div class="button-group" style="justify-content: space-between; margin-top: 25px;">
+            <button class="btn" id="prevStepBtn" style="visibility: hidden;">◀ 上一步</button>
+            <button class="btn btn-primary" id="nextStepBtn">下一步 ▶</button>
+        </div>
     </div>
+    <footer>基于期望值准则 (EMV) | 敏感性分析支持实时调整状态概率 | 支持保存/加载JSON配置</footer>
 </div>
 
 <script>
-    // ----- 全局状态 -----
-    let currentStep = 1;          // 1,2,3
-    let m = 3;                    // 方案数 (2~8)
-    let n = 2;                    // 状态数 (2~6)
-    let payoffMatrix = [];        // 二维数组 [m][n]
-    let probabilities = [];       // 长度 n
-    let savedConfig = null;       // 储存json加载时的中间态，方便
+    // ---------- 风险决策全局状态 ----------
+    let state = {
+        stepIdx: 0,                 // 0: 设置维度, 1: 损益矩阵&概率, 2: 决策&敏感性分析
+        m: 3,                      // 方案数 (2~8)
+        n: 2,                      // 状态数 (2~6)
+        payoffMatrix: [],          // 二维数组 [m][n]
+        probabilities: [],         // 长度 n
+        // 敏感分析暂存
+        sensitivityStateIdx: 0,
+        sensitivityProbability: 0.3,
+        sensitivityActive: false,
+        stepValid: {}
+    };
+    let totalSteps = 3;
 
-    // 敏感性分析相关状态
-    let sensitivityActive = false;
-    let sensitivityStateIdx = 0;   // 调整哪个自然状态的概率
-    let sensitivityProbability = 0.3; // 当前滑块值
-    let rankingCache = [];          // 排序结果
-
-    // DOM 元素引用动态生成，需借助渲染函数更新
-
-    // 辅助：校验概率自动补齐
+    // ----- 辅助函数：概率自动归一化 -----
     function autoFillProbabilities(probsArray, expectedN) {
         let arr = [...probsArray];
         if (arr.length !== expectedN) {
-            // 若长度不符，重置
             let newArr = new Array(expectedN).fill(0);
             for (let i = 0; i < Math.min(arr.length, expectedN); i++) newArr[i] = arr[i];
             arr = newArr;
@@ -296,412 +360,446 @@
         }
         let last = 1 - sum;
         if (last < 0) {
-            // 超1则归一最后
             last = 0;
-            // 调整前面使总和为1, 简单处理: 重新归一
             let total = 0;
-            for (let i=0;i<expectedN-1;i++) total += arr[i];
-            if(total>0) for(let i=0;i<expectedN-1;i++) arr[i] = arr[i]/total * (1 - Math.max(0,last));
-            last = 1 - arr.reduce((a,b)=>a+b,0);
+            for (let i = 0; i < expectedN - 1; i++) total += arr[i];
+            if (total > 0) for (let i = 0; i < expectedN - 1; i++) arr[i] = arr[i] / total * (1 - Math.max(0, last));
+            last = 1 - arr.reduce((a, b) => a + b, 0);
         }
-        arr[expectedN-1] = Math.max(0, Math.min(1, last));
-        // 精度处理
-        let finSum = arr.reduce((a,b)=>a+b,0);
-        if(Math.abs(finSum-1)>0.0001) arr[expectedN-1] += (1-finSum);
-        return arr.map(v => Math.min(1,Math.max(0, v)));
+        arr[expectedN - 1] = Math.max(0, Math.min(1, last));
+        let finSum = arr.reduce((a, b) => a + b, 0);
+        if (Math.abs(finSum - 1) > 0.0001) arr[expectedN - 1] += (1 - finSum);
+        return arr.map(v => Math.min(1, Math.max(0, v)));
     }
 
-    // 根据当前m,n构建/重置损益矩阵和概率
+    // 重置/初始化矩阵和概率 (依据当前m,n)
     function resetMatricesAndProbs() {
-        // 保留原值近似，但维度改变时重新初始化
-        let newPayoff = Array(m).fill().map(() => Array(n).fill(0));
-        for (let i=0; i<m; i++) {
-            for (let j=0; j<n; j++) {
-                if (payoffMatrix[i] && typeof payoffMatrix[i][j] === 'number' && !isNaN(payoffMatrix[i][j])) {
-                    newPayoff[i][j] = payoffMatrix[i][j];
+        let newPayoff = Array(state.m).fill().map(() => Array(state.n).fill(0));
+        for (let i = 0; i < state.m; i++) {
+            for (let j = 0; j < state.n; j++) {
+                if (state.payoffMatrix[i] && typeof state.payoffMatrix[i][j] === 'number' && !isNaN(state.payoffMatrix[i][j])) {
+                    newPayoff[i][j] = state.payoffMatrix[i][j];
                 } else {
-                    newPayoff[i][j] = (i*2 + j*3 - 5); // 示例占位值但数学中性，可显示默认
+                    newPayoff[i][j] = (i * 2 + j * 3 - 5);
                 }
             }
         }
-        payoffMatrix = newPayoff;
-        let newProbs = new Array(n).fill(0);
-        if (probabilities.length === n) {
-            newProbs = [...probabilities];
-        } else if (probabilities.length > 0) {
-            for (let i=0; i<Math.min(probabilities.length, n); i++) newProbs[i] = probabilities[i];
-            if (n>0) newProbs = autoFillProbabilities(newProbs, n);
+        state.payoffMatrix = newPayoff;
+        let newProbs = new Array(state.n).fill(0);
+        if (state.probabilities.length === state.n) {
+            newProbs = [...state.probabilities];
+        } else if (state.probabilities.length > 0) {
+            for (let i = 0; i < Math.min(state.probabilities.length, state.n); i++) newProbs[i] = state.probabilities[i];
+            newProbs = autoFillProbabilities(newProbs, state.n);
         } else {
-            // 均匀初始
-            let init = 1/n;
-            for(let i=0;i<n;i++) newProbs[i]=init;
+            let init = 1 / state.n;
+            for (let i = 0; i < state.n; i++) newProbs[i] = init;
         }
-        probabilities = autoFillProbabilities(newProbs, n);
-        sensitivityActive = false;
+        state.probabilities = autoFillProbabilities(newProbs, state.n);
+        state.sensitivityActive = false;
+        state.sensitivityStateIdx = 0;
+        state.sensitivityProbability = state.probabilities[0];
     }
 
-    // 期望值计算 (基于当前概率)
-    function computeEMV() {
+    // 期望值计算
+    function computeEMV(probs = null) {
+        let probArr = probs ? probs : state.probabilities;
         let emvList = [];
-        for (let i=0; i<m; i++) {
+        for (let i = 0; i < state.m; i++) {
             let ev = 0;
-            for (let j=0; j<n; j++) {
-                let val = parseFloat(payoffMatrix[i]?.[j]);
+            for (let j = 0; j < state.n; j++) {
+                let val = parseFloat(state.payoffMatrix[i]?.[j]);
                 if (isNaN(val)) val = 0;
-                ev += val * probabilities[j];
+                ev += val * probArr[j];
             }
             emvList.push(ev);
         }
         return emvList;
     }
 
-    // 获取最优推荐
     function getRecommendation(emvArray) {
         let maxEv = -Infinity;
         let bestIdx = -1;
-        for (let i=0; i<emvArray.length; i++) {
+        for (let i = 0; i < emvArray.length; i++) {
             if (emvArray[i] > maxEv) {
                 maxEv = emvArray[i];
                 bestIdx = i;
             }
         }
-        return { bestIdx, maxEv, emvArray };
+        return { bestIdx, maxEv };
     }
 
-    // 敏感性分析：基于给定状态索引和新的概率p_new，其他状态等比例缩放（权重保持原始相对比例）
+    // 敏感性调整概率（其他等比例缩放）
     function getSensitivityAdjustedProbs(stateIdx, newProb) {
-        let newProbs = [...probabilities];
+        let newProbs = [...state.probabilities];
         let oldTarget = newProbs[stateIdx];
         if (oldTarget === undefined) return newProbs;
-        let delta = newProb - oldTarget;
         newProbs[stateIdx] = newProb;
-        // 其他索引等比缩放保持总和=1
         let otherIndices = [];
         let otherSumOld = 0;
-        for (let i=0; i<n; i++) {
+        for (let i = 0; i < state.n; i++) {
             if (i !== stateIdx) {
                 otherIndices.push(i);
-                otherSumOld += probabilities[i];
+                otherSumOld += state.probabilities[i];
             }
         }
         if (otherSumOld > 1e-9) {
             let scale = (1 - newProb) / otherSumOld;
             for (let idx of otherIndices) {
-                newProbs[idx] = probabilities[idx] * scale;
+                newProbs[idx] = state.probabilities[idx] * scale;
             }
         } else {
-            // 极端情况重新分配
-            let equal = (1 - newProb) / (n-1);
+            let equal = (1 - newProb) / (state.n - 1);
             for (let idx of otherIndices) newProbs[idx] = equal;
         }
-        // 数值修约保证和=1
-        let sumNow = newProbs.reduce((a,b)=>a+b,0);
-        if(Math.abs(sumNow-1)>0.0001) newProbs[0] += (1-sumNow);
+        let sumNow = newProbs.reduce((a, b) => a + b, 0);
+        if (Math.abs(sumNow - 1) > 0.0001) newProbs[0] += (1 - sumNow);
         return newProbs.map(v => Math.min(1, Math.max(0, v)));
     }
 
-    // 期望值结算+排序（供敏感性展示）
     function computeRankingWithProbs(probsForRank) {
         let emvs = [];
-        for (let i=0; i<m; i++) {
+        for (let i = 0; i < state.m; i++) {
             let ev = 0;
-            for (let j=0; j<n; j++) ev += parseFloat(payoffMatrix[i]?.[j] || 0) * probsForRank[j];
+            for (let j = 0; j < state.n; j++) ev += parseFloat(state.payoffMatrix[i]?.[j] || 0) * probsForRank[j];
             emvs.push(ev);
         }
         let indexed = emvs.map((val, idx) => ({ idx, val }));
-        indexed.sort((a,b) => b.val - a.val);
+        indexed.sort((a, b) => b.val - a.val);
         return { sorted: indexed, emvs };
     }
 
-    // 渲染核心界面（基于当前步骤）
-    function renderAll() {
-        const container = document.getElementById('dynamicContent');
-        if (!container) return;
-        let html = '';
-        if (currentStep === 1) {
-            html = getStep1Html();
-        } else if (currentStep === 2) {
-            html = getStep2Html();
-        } else if (currentStep === 3) {
-            html = getStep3Html();
+    // 步骤有效性验证
+    function validateCurrentStep() {
+        if (state.stepIdx === 0) return (state.m >= 2 && state.m <= 8 && state.n >= 2 && state.n <= 6);
+        if (state.stepIdx === 1) {
+            // 检查损益矩阵无非法，概率有效
+            for (let i = 0; i < state.m; i++)
+                for (let j = 0; j < state.n; j++)
+                    if (isNaN(state.payoffMatrix[i][j])) return false;
+            let sum = state.probabilities.reduce((a,b)=>a+b,0);
+            return Math.abs(sum - 1) < 0.001;
         }
-        container.innerHTML = html;
-        attachStep1Events();
-        attachStep2Events();
-        attachStep3Events();
-        updateStepProgressUI();
-        if(currentStep===3) updateSensitivitySlidersAndRank();
+        if (state.stepIdx === 2) return true;
+        return true;
     }
 
-    function getStep1Html() {
-        return `
-            <div class="section-title">📐 决策问题规模配置</div>
-            <div class="param-panel">
-                <div class="param-group"><label>📋 方案数量 (2~8)</label><input type="number" id="numAlts" min="2" max="8" value="${m}"></div>
-                <div class="param-group"><label>🌍 自然状态数量 (2~6)</label><input type="number" id="numStates" min="2" max="6" value="${n}"></div>
-                <div><button id="confirmDimsBtn" class="secondary">✓ 确认并进入下一步</button></div>
-            </div>
-            <div class="result-area" style="background:#fefaf5;">
-                <p><span class="badge">📌 说明</span> 设定方案与状态数量后，系统将初始化损益矩阵与概率分布。后续可任意编辑数值。</p>
-                <p>当前预填示例数据为中性值，可在下一步编辑真实损益及概率。</p>
-            </div>
-            <div class="footer-bar"><button id="nextStepFrom1" class="secondary">下一步 → 填写矩阵</button></div>
-        `;
-    }
-
-    function getStep2Html() {
-        // 重新保证矩阵维度与概率长度一致
-        if(payoffMatrix.length !== m || (payoffMatrix[0] && payoffMatrix[0].length !== n)) resetMatricesAndProbs();
-        let tableHtml = `<div class="section-title">📋 损益值矩阵 (支持负数)</div><div class="matrix-table"><table><thead><tr><th>方案 \\ 状态</th>`;
-        for(let j=0;j<n;j++) tableHtml += `<th>状态 S${j+1}</th>`;
-        tableHtml += `</tr></thead><tbody>`;
-        for(let i=0;i<m;i++){
-            tableHtml += `<tr><td style="background:#f2efe9;">📌 方案 A${i+1}</td>`;
-            for(let j=0;j<n;j++){
-                let val = (payoffMatrix[i] && typeof payoffMatrix[i][j] === 'number') ? payoffMatrix[i][j] : 0;
-                tableHtml += `<td><input class="table-input payoff-input" data-i="${i}" data-j="${j}" type="number" step="any" value="${val}"></td>`;
-            }
-            tableHtml += `</tr>`;
+    function recomputeStepValidAll() {
+        for (let s = 0; s < totalSteps; s++) {
+            let originalIdx = state.stepIdx;
+            state.stepIdx = s;
+            state.stepValid[s] = validateCurrentStep();
+            state.stepIdx = originalIdx;
         }
-        tableHtml += `</tbody></table></div>`;
-
-        // 概率编辑
-        tableHtml += `<div class="section-title">🎲 自然状态概率分布 (总和自动归一)</div><div class="matrix-table"><table style="max-width:500px;"><thead><tr><th>状态</th><th>概率 P</th></tr></thead><tbody>`;
-        for(let j=0;j<n;j++){
-            let probVal = (probabilities[j] !== undefined) ? probabilities[j].toFixed(4) : (1/n).toFixed(4);
-            tableHtml += `<tr><td>状态 S${j+1}</td><td><input class="table-input prob-input" data-idx="${j}" type="number" step="0.01" min="0" max="1" value="${parseFloat(probVal)}"></td></tr>`;
-        }
-        tableHtml += `</tbody></table><div class="warning" id="probWarning"></div></div>`;
-        tableHtml += `<div class="footer-bar"><button id="backStep1From2">← 上一步</button><button id="computeAndNextStep3">计算期望值 & 进入决策分析 →</button></div>`;
-        return tableHtml;
+        renderProgressAndSteps();
+        updateNavigationButtons();
     }
 
-    function getStep3Html() {
-        let emvList = computeEMV();
-        let { bestIdx, maxEv } = getRecommendation(emvList);
-        let bestEvStr = maxEv.toFixed(4);
-        let tableEMV = `<div class="result-area"><div class="best-recommend">✅ 最优方案: <strong>方案 A${bestIdx+1}</strong>  &nbsp;| 期望值 EMV = ${bestEvStr}</div>`;
-        tableEMV += `<div style="margin-top:12px;"><strong>各方案期望值:</strong><br/>` + emvList.map((ev,idx)=>`方案 A${idx+1}: ${ev.toFixed(4)}`).join(' ; ') + `</div></div>`;
-
-        // 敏感性分析面板
-        let stateOptions = '';
-        for(let i=0;i<n;i++) stateOptions += `<option value="${i}">状态 S${i+1} (当前概率 ${probabilities[i].toFixed(3)})</option>`;
-        let sliderVal = sensitivityActive ? sensitivityProbability : probabilities[sensitivityStateIdx];
-        if(!sensitivityActive) sensitivityProbability = probabilities[0];
-        let usedProb = sensitivityActive ? sensitivityProbability : probabilities[sensitivityStateIdx];
-        
-        let sensitivityHtml = `
-            <div class="sensitivity-panel">
-                <h3 style="margin:0 0 0.6rem 0;">🔍 一维概率敏感性分析</h3>
-                <div>选择自然状态: <select id="senStateSelect">${stateOptions}</select></div>
-                <div class="slider-container">
-                    <span style="min-width:80px;">概率 P : </span>
-                    <input type="range" id="probSlider" min="0" max="1" step="0.005" value="${usedProb}">
-                    <span id="sliderValueLabel" style="min-width:70px;">${usedProb.toFixed(3)}</span>
-                </div>
-                <div id="sensitivityRanking" class="ranking-list">⚡ 移动滑块实时更新期望值排序...</div>
-            </div>
-        `;
-
-        let jsonOps = `<div style="margin-top: 1rem; display:flex; gap:1rem;"><button id="saveJsonBtn">💾 保存当前进度(JSON)</button><button id="loadJsonBtn" class="secondary">📂 加载JSON进度</button><input type="file" id="loadFileInput" accept=".json" style="display:none;"></div>`;
-        let navBtns = `<div class="footer-bar"><button id="backStep2From3">← 上一步编辑矩阵</button> ${jsonOps}</div>`;
-
-        return tableEMV + sensitivityHtml + navBtns;
+    function updateNavigationButtons() {
+        const prevBtn = document.getElementById('prevStepBtn');
+        const nextBtn = document.getElementById('nextStepBtn');
+        if (!prevBtn || !nextBtn) return;
+        prevBtn.style.visibility = state.stepIdx === 0 ? 'hidden' : 'visible';
+        const isValid = validateCurrentStep();
+        nextBtn.disabled = !isValid;
     }
 
-    // 从UI更新损益矩阵
+    // 从UI同步损益和概率
     function syncPayoffFromInputs() {
-        for(let i=0;i<m;i++){
-            for(let j=0;j<n;j++){
+        for (let i = 0; i < state.m; i++) {
+            for (let j = 0; j < state.n; j++) {
                 let inp = document.querySelector(`.payoff-input[data-i='${i}'][data-j='${j}']`);
-                if(inp){
+                if (inp) {
                     let val = parseFloat(inp.value);
-                    if(!isNaN(val)) payoffMatrix[i][j] = val;
+                    if (!isNaN(val)) state.payoffMatrix[i][j] = val;
                 }
             }
         }
     }
     function syncProbFromInputs() {
         let newProbs = [];
-        for(let j=0;j<n;j++){
+        for (let j = 0; j < state.n; j++) {
             let inp = document.querySelector(`.prob-input[data-idx='${j}']`);
-            if(inp) newProbs.push(parseFloat(inp.value));
-            else newProbs.push(probabilities[j]);
+            if (inp) newProbs.push(parseFloat(inp.value));
+            else newProbs.push(state.probabilities[j]);
         }
-        if(newProbs.length === n) {
-            probabilities = autoFillProbabilities(newProbs, n);
-            // 回写显示归一值
-            for(let j=0;j<n;j++){
+        if (newProbs.length === state.n) {
+            state.probabilities = autoFillProbabilities(newProbs, state.n);
+            for (let j = 0; j < state.n; j++) {
                 let inp = document.querySelector(`.prob-input[data-idx='${j}']`);
-                if(inp) inp.value = probabilities[j].toFixed(4);
+                if (inp) inp.value = state.probabilities[j].toFixed(4);
             }
             let warn = document.getElementById('probWarning');
-            if(warn) warn.innerText = "✓ 概率已自动归一化总和为1";
+            if (warn) warn.innerText = "✓ 概率已自动归一化总和为1";
         }
     }
 
-    // 事件绑定
-    function attachStep1Events() {
-        document.getElementById('confirmDimsBtn')?.addEventListener('click',()=>{
+    // 渲染步骤0: 维度配置
+    function renderStepDimensions(container) {
+        container.innerHTML = `
+            <div class="card">
+                <div class="step-title">📐 决策问题规模配置</div>
+                <div class="param-panel">
+                    <div class="param-group"><label>📋 方案数量 (2~8)</label><input type="number" id="numAlts" min="2" max="8" value="${state.m}"></div>
+                    <div class="param-group"><label>🌍 自然状态数量 (2~6)</label><input type="number" id="numStates" min="2" max="6" value="${state.n}"></div>
+                    <div><button id="confirmDimsBtn" class="btn-outline">✓ 应用并重置矩阵</button></div>
+                </div>
+                <div class="info-panel">
+                    <p><span class="badge">📌 说明</span> 设定方案与状态数量后，系统将初始化损益矩阵与概率分布。后续可在步骤2中编辑数值。</p>
+                    <p>当前预填示例数据为中性值，可编辑真实损益及概率。</p>
+                </div>
+            </div>
+        `;
+        document.getElementById('confirmDimsBtn')?.addEventListener('click', () => {
             let newM = parseInt(document.getElementById('numAlts').value);
             let newN = parseInt(document.getElementById('numStates').value);
-            if(newM>=2 && newM<=8) m = newM;
-            if(newN>=2 && newN<=6) n = newN;
+            if (newM >= 2 && newM <= 8) state.m = newM;
+            if (newN >= 2 && newN <= 6) state.n = newN;
             resetMatricesAndProbs();
-            currentStep = 2;
-            renderAll();
-        });
-        document.getElementById('nextStepFrom1')?.addEventListener('click',()=>{
-            let newM = parseInt(document.getElementById('numAlts')?.value)||m;
-            let newN = parseInt(document.getElementById('numStates')?.value)||n;
-            if(newM>=2 && newM<=8) m = newM;
-            if(newN>=2 && newN<=6) n = newN;
-            resetMatricesAndProbs();
-            currentStep = 2;
-            renderAll();
+            recomputeStepValidAll();
+            renderCurrentStep();
         });
     }
-    function attachStep2Events() {
-        // 实时更新损益
-        document.querySelectorAll('.payoff-input').forEach(inp=>{
-            inp.removeEventListener('change', ()=>{}); 
-            inp.addEventListener('change', (e)=>{
-                let i=parseInt(inp.dataset.i), j=parseInt(inp.dataset.j);
-                let val=parseFloat(inp.value);
-                if(!isNaN(val)) payoffMatrix[i][j]=val;
+
+    // 步骤1: 损益矩阵 + 概率编辑
+    function renderStepMatrix(container) {
+        if (state.payoffMatrix.length !== state.m || (state.payoffMatrix[0] && state.payoffMatrix[0].length !== state.n)) resetMatricesAndProbs();
+        let tableHtml = `<div class="card"><div class="step-title">📋 损益值矩阵 & 概率分布</div>`;
+        tableHtml += `<div class="matrix-wrapper"><table class="matrix-table"><thead><tr><th>方案 \\ 状态</th>`;
+        for (let j = 0; j < state.n; j++) tableHtml += `<th>状态 S${j+1}</th>`;
+        tableHtml += `</tr></thead><tbody>`;
+        for (let i = 0; i < state.m; i++) {
+            tableHtml += `<tr><td style="background:#f2efe9;">📌 方案 A${i+1}</td>`;
+            for (let j = 0; j < state.n; j++) {
+                let val = (state.payoffMatrix[i] && typeof state.payoffMatrix[i][j] === 'number') ? state.payoffMatrix[i][j] : 0;
+                tableHtml += `<td><input class="table-input payoff-input" data-i="${i}" data-j="${j}" type="number" step="any" value="${val}"></td>`;
+            }
+            tableHtml += `</tr>`;
+        }
+        tableHtml += `</tbody></table></div>`;
+        tableHtml += `<div class="step-title" style="margin-top:1rem;">🎲 自然状态概率分布 (总和自动归一)</div>`;
+        tableHtml += `<div class="matrix-wrapper"><table style="max-width:500px;"><thead><tr><th>状态</th><th>概率 P</th></tr></thead><tbody>`;
+        for (let j = 0; j < state.n; j++) {
+            let probVal = (state.probabilities[j] !== undefined) ? state.probabilities[j].toFixed(4) : (1/state.n).toFixed(4);
+            tableHtml += `<tr><td>状态 S${j+1}</td><td><input class="table-input prob-input" data-idx="${j}" type="number" step="0.01" min="0" max="1" value="${parseFloat(probVal)}"></td></tr>`;
+        }
+        tableHtml += `</tbody></table><div class="warning" id="probWarning"></div></div></div>`;
+        container.innerHTML = tableHtml;
+
+        // 绑定事件
+        document.querySelectorAll('.payoff-input').forEach(inp => {
+            inp.addEventListener('change', (e) => {
+                let i = parseInt(inp.dataset.i), j = parseInt(inp.dataset.j);
+                let val = parseFloat(inp.value);
+                if (!isNaN(val)) state.payoffMatrix[i][j] = val;
+                recomputeStepValidAll();
             });
         });
-        document.querySelectorAll('.prob-input').forEach(inp=>{
-            inp.addEventListener('change',()=>{
+        document.querySelectorAll('.prob-input').forEach(inp => {
+            inp.addEventListener('change', () => {
                 syncProbFromInputs();
+                recomputeStepValidAll();
+                updateNavigationButtons();
             });
         });
-        document.getElementById('backStep1From2')?.addEventListener('click',()=>{
-            currentStep=1;
-            renderAll();
-        });
-        document.getElementById('computeAndNextStep3')?.addEventListener('click',()=>{
-            syncPayoffFromInputs();
-            syncProbFromInputs();
-            currentStep=3;
-            sensitivityActive=false;
-            sensitivityStateIdx=0;
-            sensitivityProbability = probabilities[0];
-            renderAll();
-        });
     }
-    function attachStep3Events() {
-        syncPayoffFromInputs();
-        syncProbFromInputs(); 
-        // 敏感性分析下拉与滑块
+
+    // 步骤2: 决策结果 + 敏感性分析
+    function renderStepDecision(container) {
+        let emvList = computeEMV();
+        let { bestIdx, maxEv } = getRecommendation(emvList);
+        let bestEvStr = maxEv.toFixed(4);
+        let tableEMV = `<div class="card"><div class="step-title">📊 期望值决策 & 敏感性分析</div>`;
+        tableEMV += `<div class="result-area"><div class="best-recommend">✅ 最优方案: <strong>方案 A${bestIdx+1}</strong> &nbsp;| 期望值 EMV = ${bestEvStr}</div>`;
+        tableEMV += `<div style="margin-top:12px;"><strong>各方案期望值:</strong><br/>` + emvList.map((ev,idx)=>`方案 A${idx+1}: ${ev.toFixed(4)}`).join(' ; ') + `</div></div>`;
+
+        // 敏感性分析面板
+        let stateOptions = '';
+        for (let i = 0; i < state.n; i++) stateOptions += `<option value="${i}">状态 S${i+1} (当前概率 ${state.probabilities[i].toFixed(3)})</option>`;
+        let currentSensIdx = state.sensitivityStateIdx;
+        let currentSensProb = state.sensitivityActive ? state.sensitivityProbability : state.probabilities[currentSensIdx];
+        
+        tableEMV += `<div class="sensitivity-panel">
+                        <h3 style="margin:0 0 0.6rem 0;">🔍 一维概率敏感性分析</h3>
+                        <div>选择自然状态: <select id="senStateSelect">${stateOptions}</select></div>
+                        <div class="slider-container">
+                            <span style="min-width:80px;">概率 P : </span>
+                            <input type="range" id="probSlider" min="0" max="1" step="0.005" value="${currentSensProb}">
+                            <span id="sliderValueLabel" style="min-width:70px;">${currentSensProb.toFixed(4)}</span>
+                        </div>
+                        <div id="sensitivityRanking" class="ranking-list">⚡ 移动滑块实时更新期望值排序...</div>
+                    </div></div>`;
+        container.innerHTML = tableEMV;
+
+        // 绑定敏感性控件
         let selectState = document.getElementById('senStateSelect');
         let slider = document.getElementById('probSlider');
         let labelSpan = document.getElementById('sliderValueLabel');
-        if(selectState && slider){
-            const updateSensitivity = () => {
-                let stateIdx = parseInt(selectState.value);
-                let newProb = parseFloat(slider.value);
-                sensitivityStateIdx = stateIdx;
-                sensitivityProbability = newProb;
-                sensitivityActive = true;
-                if(labelSpan) labelSpan.innerText = newProb.toFixed(4);
-                updateSensitivityRankingDisplay(stateIdx, newProb);
-            };
+        const updateSensitivityDisplay = () => {
+            let stateIdx = parseInt(selectState.value);
+            let newProb = parseFloat(slider.value);
+            state.sensitivityStateIdx = stateIdx;
+            state.sensitivityProbability = newProb;
+            state.sensitivityActive = true;
+            if (labelSpan) labelSpan.innerText = newProb.toFixed(4);
+            let adjProbs = getSensitivityAdjustedProbs(stateIdx, newProb);
+            let { sorted } = computeRankingWithProbs(adjProbs);
+            let rankingHtml = `<strong>📊 敏感性排序 (概率 P(S${stateIdx+1}) = ${newProb.toFixed(4)})</strong><br/>`;
+            for (let rank = 0; rank < sorted.length; rank++) {
+                rankingHtml += `${rank+1}. 方案 A${sorted[rank].idx+1} (EMV=${sorted[rank].val.toFixed(4)})<br/>`;
+            }
+            rankingHtml += `<small>※ 其他状态概率等比例缩放，总和为1</small>`;
+            let rankDiv = document.getElementById('sensitivityRanking');
+            if (rankDiv) rankDiv.innerHTML = rankingHtml;
+        };
+        if (selectState && slider) {
             selectState.addEventListener('change', () => {
                 let idx = parseInt(selectState.value);
-                let cur = probabilities[idx];
-                slider.value = cur;
-                sensitivityProbability = cur;
-                sensitivityActive = true;
-                if(labelSpan) labelSpan.innerText = cur.toFixed(4);
-                updateSensitivityRankingDisplay(idx, cur);
+                let curProb = state.probabilities[idx];
+                slider.value = curProb;
+                state.sensitivityProbability = curProb;
+                state.sensitivityActive = true;
+                updateSensitivityDisplay();
             });
             slider.addEventListener('input', () => {
-                let val = parseFloat(slider.value);
-                let idx = parseInt(selectState.value);
-                sensitivityProbability = val;
-                sensitivityActive = true;
-                if(labelSpan) labelSpan.innerText = val.toFixed(4);
-                updateSensitivityRankingDisplay(idx, val);
+                updateSensitivityDisplay();
             });
-            updateSensitivityRankingDisplay(sensitivityStateIdx, sensitivityProbability);
+            updateSensitivityDisplay();
         }
-        document.getElementById('saveJsonBtn')?.addEventListener('click', saveToJson);
-        const fileInput = document.getElementById('loadFileInput');
-        document.getElementById('loadJsonBtn')?.addEventListener('click',()=>{fileInput.click();});
-        fileInput?.addEventListener('change', loadFromJson);
-        document.getElementById('backStep2From3')?.addEventListener('click',()=>{
-            currentStep=2;
-            renderAll();
-        });
     }
-    function updateSensitivityRankingDisplay(stateIdx, newProbVal){
-        let adjProbs = getSensitivityAdjustedProbs(stateIdx, newProbVal);
-        let { sorted, emvs } = computeRankingWithProbs(adjProbs);
-        let rankingHtml = `<strong>📊 敏感性排序 (概率 P(S${stateIdx+1}) = ${newProbVal.toFixed(4)})</strong><br/>`;
-        for(let rank=0; rank<sorted.length; rank++){
-            let item = sorted[rank];
-            rankingHtml += `${rank+1}. 方案 A${item.idx+1} (EMV=${item.val.toFixed(4)})<br/>`;
+
+    // 主渲染分发
+    function renderCurrentStep() {
+        const container = document.getElementById('dynamicStepView');
+        if (!container) return;
+        if (state.stepIdx === 0) renderStepDimensions(container);
+        else if (state.stepIdx === 1) renderStepMatrix(container);
+        else if (state.stepIdx === 2) renderStepDecision(container);
+        updateNavigationButtons();
+        renderProgressAndSteps();
+        // 重新触发概率/面板的额外刷新
+        if (state.stepIdx === 2) {
+            // 确保敏感性显示
+            setTimeout(() => {
+                let select = document.getElementById('senStateSelect');
+                if (select && !select._listenerAttached) {
+                    // 已通过上面绑定，无需重复
+                }
+            }, 20);
         }
-        rankingHtml += `<small>※ 其他状态概率等比例缩放，总和为1</small>`;
-        let rankDiv = document.getElementById('sensitivityRanking');
-        if(rankDiv) rankDiv.innerHTML = rankingHtml;
     }
-    function updateSensitivitySlidersAndRank(){}
-    
-    function saveToJson() {
-        let data = { m, n, payoffMatrix, probabilities, version: "risk_decider_v1" };
-        let jsonStr = JSON.stringify(data, null, 2);
-        let blob = new Blob([jsonStr], {type:"application/json"});
+
+    // 进度条与步骤指示器
+    function renderProgressAndSteps() {
+        let percent = ((state.stepIdx + 1) / totalSteps) * 100;
+        let fillBar = document.getElementById('progressFill');
+        if (fillBar) fillBar.style.width = `${percent}%`;
+        let stepsDiv = document.getElementById('stepIndicator');
+        if (!stepsDiv) return;
+        stepsDiv.innerHTML = '';
+        let stepNames = ['1. 规模配置', '2. 损益&概率', '3. 决策&敏感性'];
+        for (let i = 0; i < stepNames.length; i++) {
+            let badge = document.createElement('div');
+            badge.className = 'step-badge';
+            if (i === state.stepIdx) badge.classList.add('active');
+            if (state.stepValid[i] === true && i !== state.stepIdx) badge.classList.add('completed');
+            else if (state.stepValid[i] !== true && i !== state.stepIdx) badge.classList.add('pending');
+            badge.innerText = stepNames[i];
+            badge.onclick = (function(idx) { return () => { if (idx <= state.stepIdx + 1 && idx >= 0 && state.stepValid[idx] !== false) { state.stepIdx = idx; renderCurrentStep(); } else if (idx <= state.stepIdx + 1 && idx >= 0) { state.stepIdx = idx; renderCurrentStep(); } } })(i);
+            stepsDiv.appendChild(badge);
+        }
+    }
+
+    // JSON 保存 & 加载
+    function saveToJSON() {
+        let dump = {
+            version: "risk_decider_v2",
+            m: state.m,
+            n: state.n,
+            payoffMatrix: state.payoffMatrix,
+            probabilities: state.probabilities,
+            stepIdx: state.stepIdx
+        };
+        let blob = new Blob([JSON.stringify(dump, null, 2)], { type: 'application/json' });
         let a = document.createElement('a');
         a.href = URL.createObjectURL(blob);
         a.download = `risk_analysis_${new Date().toISOString().slice(0,19)}.json`;
         a.click();
         URL.revokeObjectURL(a.href);
     }
-    function loadFromJson(e) {
-        let file = e.target.files[0];
-        if(!file) return;
-        let reader = new FileReader();
-        reader.onload = (ev) => {
-            try{
-                let obj = JSON.parse(ev.target.result);
-                if(obj.m && obj.n && obj.payoffMatrix && obj.probabilities){
-                    m = Math.min(8,Math.max(2, obj.m));
-                    n = Math.min(6,Math.max(2, obj.n));
-                    payoffMatrix = obj.payoffMatrix.slice(0,m).map(row=>row.slice(0,n));
-                    probabilities = obj.probabilities.slice(0,n);
-                    if(probabilities.length<n) probabilities = autoFillProbabilities(probabilities,n);
-                    probabilities = autoFillProbabilities(probabilities,n);
-                    resetMatricesAndProbs();
-                    currentStep = 3;
-                    sensitivityActive=false;
-                    sensitivityStateIdx=0;
-                    sensitivityProbability=probabilities[0];
-                    renderAll();
-                } else alert("无效的JSON文件");
-            }catch(err){ alert("解析失败");}
-            fileInput.value = '';
+
+    function loadFromJSON(jsonObj) {
+        try {
+            if (jsonObj.m && jsonObj.n && jsonObj.payoffMatrix && jsonObj.probabilities) {
+                state.m = Math.min(8, Math.max(2, jsonObj.m));
+                state.n = Math.min(6, Math.max(2, jsonObj.n));
+                state.payoffMatrix = jsonObj.payoffMatrix.slice(0, state.m).map(row => row.slice(0, state.n));
+                state.probabilities = autoFillProbabilities(jsonObj.probabilities.slice(0, state.n), state.n);
+                if (typeof jsonObj.stepIdx === 'number' && jsonObj.stepIdx >= 0 && jsonObj.stepIdx < totalSteps) state.stepIdx = jsonObj.stepIdx;
+                else state.stepIdx = 0;
+                state.sensitivityActive = false;
+                state.sensitivityStateIdx = 0;
+                state.sensitivityProbability = state.probabilities[0];
+                resetMatricesAndProbs();
+                recomputeStepValidAll();
+                renderCurrentStep();
+            } else {
+                alert("无效的JSON文件格式");
+            }
+        } catch (err) { alert("解析失败"); }
+    }
+
+    // 页面按钮事件
+    document.getElementById('saveProgressBtn').onclick = () => saveToJSON();
+    document.getElementById('loadProgressBtn').onclick = () => document.getElementById('loadFileInput').click();
+    document.getElementById('loadFileInput').onchange = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = ev => {
+            try { loadFromJSON(JSON.parse(ev.target.result)); } catch (err) { alert("无效JSON"); }
         };
         reader.readAsText(file);
-    }
-    function updateStepProgressUI() {
-        let steps = document.querySelectorAll('.step-item');
-        steps.forEach((step, idx) => {
-            let stepNum = idx+1;
-            if(stepNum === currentStep) step.classList.add('active');
-            else step.classList.remove('active');
-            if(stepNum <= currentStep) step.classList.remove('disabled-step');
-            else step.classList.add('disabled-step');
-        });
-    }
-    // 首次渲染
-    (function init() {
-        m=3; n=2;
+        e.target.value = '';
+    };
+    document.getElementById('nextStepBtn').onclick = () => {
+        if (state.stepIdx + 1 < totalSteps) {
+            if (validateCurrentStep()) {
+                // 步骤1跳转前同步数据
+                if (state.stepIdx === 1) {
+                    syncPayoffFromInputs();
+                    syncProbFromInputs();
+                }
+                state.stepIdx++;
+                renderCurrentStep();
+            } else {
+                alert("当前步骤尚未完成，请完善数据（矩阵完整/概率和应为1）。");
+            }
+        } else {
+            alert("已完成全部步骤，您可继续调整敏感性分析或保存进度。");
+        }
+    };
+    document.getElementById('prevStepBtn').onclick = () => {
+        if (state.stepIdx > 0) {
+            if (state.stepIdx === 1) {
+                syncPayoffFromInputs();
+                syncProbFromInputs();
+            }
+            state.stepIdx--;
+            renderCurrentStep();
+        }
+    };
+
+    // 初始化
+    function init() {
+        state.m = 3; state.n = 2;
         resetMatricesAndProbs();
-        currentStep=1;
-        renderAll();
-    })();
+        state.stepIdx = 0;
+        state.sensitivityActive = false;
+        recomputeStepValidAll();
+        renderCurrentStep();
+    }
+    init();
 </script>
 </body>
 </html>
