@@ -3,248 +3,277 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-    <title>严格不确定型决策工具</title>
+    <title>严格不确定型决策分析工具 | 五种准则 + 等概率法</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600&family=Merriweather:wght@400;700&display=swap" rel="stylesheet">
     <style>
         * {
             box-sizing: border-box;
+            margin: 0;
+            padding: 0;
         }
 
         body {
-            background-color: #f9fafb;
-            font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
-            margin: 0;
-            padding: 24px 20px;
+            background-color: #f0f4f9;
+            font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
             color: #1e293b;
+            padding: 30px 20px;
         }
 
-        /* 衬线标题 */
-        h1, h2, h3, .serif-title {
-            font-family: 'Merriweather', 'Georgia', serif;
-            font-weight: 600;
-            letter-spacing: -0.3px;
-        }
-
-        .main-container {
+        .app-container {
             max-width: 1400px;
             margin: 0 auto;
-            background: white;
+            background: #ffffff;
             border-radius: 24px;
-            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.05);
+            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.08);
             overflow: hidden;
             border: 1px solid #e2e8f0;
         }
 
-        /* 页面主标题区 */
-        .hero-header {
-            background: linear-gradient(135deg, #0f2b3d 0%, #1a365d 100%);
-            padding: 28px 32px 24px 32px;
-            border-bottom: 1px solid #2c4c6e;
-        }
-        .hero-header h1 {
-            margin: 0 0 8px 0;
-            font-size: 1.9rem;
-            letter-spacing: -0.5px;
+        .header {
+            background: #1e3a5f;
             color: white;
-            font-weight: 700;
-        }
-        .hero-header p {
-            margin: 0;
-            color: #cbdff2;
-            font-size: 0.95rem;
-            font-family: 'Inter', sans-serif;
-        }
-        .hero-badge {
-            display: inline-block;
-            background: rgba(255,255,240,0.15);
-            padding: 4px 12px;
-            border-radius: 40px;
-            font-size: 0.7rem;
-            margin-top: 12px;
-            color: #e0f2fe;
+            padding: 1.5rem 2rem;
         }
 
-        /* 进度条区域 */
-        .progress-area {
-            background: #f1f5f9;
-            padding: 20px 32px;
-            border-bottom: 1px solid #e2e8f0;
-        }
-        .steps-row {
+        .title-row {
             display: flex;
-            align-items: center;
             justify-content: space-between;
-            margin-bottom: 16px;
+            align-items: baseline;
             flex-wrap: wrap;
-            gap: 8px;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
         }
-        .step-badge {
+
+        h1 {
+            font-family: 'Merriweather', Georgia, serif;
+            font-weight: 700;
+            font-size: 1.8rem;
+            letter-spacing: -0.3px;
+            color: white;
+        }
+
+        .toolbar {
             display: flex;
-            align-items: center;
-            gap: 8px;
-            background: white;
-            padding: 6px 16px;
+            gap: 12px;
+        }
+
+        .tool-btn {
+            background: rgba(255,255,255,0.15);
+            border: 1px solid rgba(255,255,255,0.3);
+            color: white;
+            padding: 8px 16px;
             border-radius: 40px;
-            font-size: 0.85rem;
             font-weight: 500;
-            color: #64748b;
-            border: 1px solid #cbd5e1;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 0.85rem;
         }
-        .step-badge.active {
-            background: #1a365d;
-            border-color: #1a365d;
-            color: white;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+
+        .tool-btn:hover {
+            background: rgba(255,255,255,0.3);
+            transform: translateY(-1px);
         }
-        .step-badge.completed {
-            background: #2c6e9e;
-            border-color: #2c6e9e;
-            color: white;
+
+        .progress-section {
+            margin-top: 8px;
         }
         .progress-bar-bg {
-            background: #e2e8f0;
-            border-radius: 12px;
+            background: rgba(255,255,255,0.25);
+            border-radius: 40px;
             height: 8px;
             width: 100%;
             overflow: hidden;
         }
         .progress-fill {
-            background: #1a365d;
+            background: #facc15;
             width: 0%;
             height: 100%;
-            transition: width 0.2s ease;
+            transition: width 0.3s ease;
+        }
+        .step-indicator {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 18px;
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+        .step-badge {
+            background: rgba(255,255,255,0.2);
+            padding: 5px 12px;
+            border-radius: 30px;
+            transition: all 0.1s;
+            cursor: pointer;
+        }
+        .step-badge.active {
+            background: #facc15;
+            color: #1e3a5f;
+            font-weight: bold;
+        }
+        .step-badge.completed {
+            background: #2e7d64;
+            color: white;
+        }
+        .step-badge.pending {
+            background: rgba(255,255,255,0.2);
+            opacity: 0.8;
         }
 
-        /* 内容区 */
-        .content-pane {
-            padding: 28px 32px;
-        }
-        .step-content {
-            display: none;
-            animation: fade 0.2s ease;
-        }
-        .step-content.active-step {
-            display: block;
-        }
-        @keyframes fade {
-            from { opacity: 0; transform: translateY(4px);}
-            to { opacity: 1; transform: translateY(0);}
+        .main-content {
+            padding: 2rem 2rem 2rem 2rem;
+            background: #fefefe;
+            min-height: 550px;
         }
 
-        /* 卡片样式 */
         .card {
-            background: #ffffff;
+            background: #f8fafc;
             border-radius: 20px;
-            border: 1px solid #eef2f6;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.02);
-            padding: 20px 24px;
-            margin-bottom: 28px;
+            border: 1px solid #e2edf2;
+            padding: 1.5rem;
+            margin-bottom: 1.8rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.02);
         }
+
+        .step-title {
+            font-family: 'Merriweather', Georgia, serif;
+            font-size: 1.6rem;
+            font-weight: 600;
+            color: #1e2a3e;
+            border-left: 6px solid #1e3a5f;
+            padding-left: 16px;
+            margin-bottom: 1.5rem;
+        }
+
         .grid-2col {
             display: flex;
-            gap: 24px;
             flex-wrap: wrap;
+            gap: 24px;
+            margin-bottom: 20px;
         }
         .input-group {
             flex: 1;
-            min-width: 200px;
+            min-width: 180px;
         }
         label {
             font-weight: 600;
-            font-size: 0.85rem;
-            color: #334155;
-            display: block;
+            display: inline-block;
             margin-bottom: 6px;
+            color: #334155;
         }
         input, select {
-            width: 100%;
             padding: 10px 12px;
-            border: 1px solid #cbd5e1;
             border-radius: 12px;
+            border: 1px solid #cbd5e1;
             font-size: 0.9rem;
             background: white;
-            transition: 0.2s;
+            width: 100%;
         }
-        input:focus, select:focus {
-            outline: none;
-            border-color: #1a365d;
-            box-shadow: 0 0 0 3px rgba(26,54,93,0.1);
+        .name-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-top: 10px;
         }
-        button {
-            background: #1a365d;
-            border: none;
-            color: white;
-            padding: 8px 18px;
-            border-radius: 30px;
-            font-weight: 500;
-            font-size: 0.85rem;
-            cursor: pointer;
-            transition: 0.2s;
-        }
-        button.secondary {
-            background: #f1f5f9;
-            color: #1e293b;
-            border: 1px solid #cbd5e1;
-        }
-        button.danger {
-            background: #f8fafc;
-            color: #b91c1c;
-            border: 1px solid #f1c0c0;
-        }
-        button:hover {
-            opacity: 0.85;
-            transform: translateY(-1px);
-        }
-        .matrix-table-wrapper {
+        .matrix-wrapper {
             overflow-x: auto;
-            margin-top: 16px;
+            margin: 15px 0;
         }
-        table {
+        .matrix-table {
             border-collapse: collapse;
             width: 100%;
-            font-size: 0.85rem;
+            background: white;
+            border-radius: 16px;
         }
-        th, td {
-            border: 1px solid #e2edf2;
+        .matrix-table th, .matrix-table td {
+            border: 1px solid #d1d9e8;
             padding: 10px 8px;
             text-align: center;
+            font-size: 0.85rem;
         }
-        th {
-            background: #f8fafc;
+        .matrix-table th {
+            background: #eef2ff;
             font-weight: 600;
-            color: #0f172a;
+            color: #1e293b;
         }
-        input.matrix-cell {
-            width: 100px;
+        .matrix-cell {
+            width: 90px;
+            padding: 6px;
             text-align: center;
-            padding: 8px 4px;
             border-radius: 8px;
+            border: 1px solid #cbd5e1;
+        }
+        .button-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin: 20px 0 10px;
+        }
+        .btn {
+            background: #f1f5f9;
+            border: 1px solid #cbd5e1;
+            padding: 8px 18px;
+            border-radius: 40px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: 0.1s;
+        }
+        .btn-primary {
+            background: #1e3a5f;
+            border-color: #1e3a5f;
+            color: white;
+        }
+        .btn-primary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .btn-outline {
+            background: white;
+            border: 1px solid #94a3b8;
+        }
+        .btn-accent {
+            background: #2c553c;
+            border-color: #2c553c;
+            color: white;
         }
         .results-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-            gap: 20px;
-            margin: 20px 0;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 18px;
+            margin-bottom: 24px;
         }
         .result-card {
-            background: #fefefe;
+            background: white;
             border-radius: 20px;
             border: 1px solid #e2e8f0;
-            padding: 16px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+            padding: 1rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.03);
         }
         .regret-table {
             font-size: 0.8rem;
             margin-top: 12px;
         }
         .sensitivity-area {
-            background: #fafcff;
+            background: #f0f9ff;
             border-radius: 18px;
             padding: 18px;
-            border: 1px solid #e0ecf5;
+            border: 1px solid #d9eaf5;
+            margin-bottom: 20px;
         }
-        hr {
-            margin: 20px 0;
-            border-color: #eef2f8;
+        .inline-slider {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+        .info-panel {
+            background: #f0f9ff;
+            padding: 15px;
+            border-radius: 14px;
+            margin-top: 20px;
+        }
+        .math {
+            font-family: monospace;
+            font-style: italic;
         }
         .badge-rec {
             background: #eef2ff;
@@ -255,387 +284,449 @@
             font-weight: 600;
             display: inline-block;
         }
-        .footer-actions {
-            display: flex;
-            justify-content: space-between;
-            margin-top: 32px;
-            flex-wrap: wrap;
-            gap: 12px;
+        footer {
+            padding: 1rem 2rem;
+            border-top: 1px solid #e2e8f0;
+            font-size: 0.75rem;
+            color: #64748b;
+            background: #f9fbfd;
         }
-        .inline-slider {
-            display: flex;
-            align-items: center;
-            gap: 16px;
-            flex-wrap: wrap;
-        }
-        .value-label {
-            font-weight: 600;
-            min-width: 60px;
-        }
-        @media (max-width: 720px) {
-            .content-pane { padding: 20px; }
-            .hero-header h1 { font-size: 1.5rem; }
+        @media (max-width: 700px) {
+            .main-content { padding: 1rem; }
+            .matrix-table th, .matrix-table td { padding: 6px 4px; }
         }
     </style>
 </head>
 <body>
-<div class="main-container">
-    <!-- 学术标题栏 -->
-    <div class="hero-header">
-        <h1>🌓 严格不确定型决策工具</h1>
-        <p>基于乐观准则 · 悲观准则 · 折中准则 · 最小后悔值准则的决策分析</p>
-    </div>
-
-    <div class="progress-area">
-        <div class="steps-row">
-            <div class="step-badge" data-step="0" id="stepBadge0">1️⃣ 基础设置</div>
-            <div class="step-badge" data-step="1" id="stepBadge1">2️⃣ 损益值矩阵</div>
-            <div class="step-badge" data-step="2" id="stepBadge2">3️⃣ 决策系数 & 结果</div>
-        </div>
-        <div class="progress-bar-bg"><div class="progress-fill" id="progressFill"></div></div>
-    </div>
-    <div class="content-pane">
-        <!-- 步骤 0: 基础设置 -->
-        <div id="step0" class="step-content active-step">
-            <div class="card">
-                <h3>📐 决策基础信息</h3>
-                <div class="grid-2col">
-                    <div class="input-group">
-                        <label>📊 方案数量 (2~8)</label>
-                        <input type="number" id="altCount" min="2" max="8" value="3" step="1">
-                    </div>
-                    <div class="input-group">
-                        <label>🌍 自然状态数量 (2~6)</label>
-                        <input type="number" id="stateCount" min="2" max="6" value="3" step="1">
-                    </div>
-                </div>
-                <div id="namesInputArea" style="margin-top: 20px;"></div>
-                <div class="footer-actions" style="margin-top: 20px;">
-                    <button id="resetNamesBtn" class="secondary">重置默认名称</button>
-                    <button id="nextStep0" style="background:#1a365d;">下一步：构建矩阵 →</button>
-                </div>
+<div class="app-container" id="appRoot">
+    <div class="header">
+        <div class="title-row">
+            <h1>📊 严格不确定型决策工具</h1>
+            <div class="toolbar">
+                <button class="tool-btn" id="saveProgressBtn">💾 保存进度 (JSON)</button>
+                <input type="file" id="loadFileInput" accept=".json" style="display: none;" />
+                <button class="tool-btn" id="loadProgressBtn">📂 加载进度</button>
             </div>
         </div>
-
-        <!-- 步骤 1: 损益值矩阵 -->
-        <div id="step1" class="step-content">
-            <div class="card">
-                <h3>📈 损益值矩阵 (收益 / 成本)</h3>
-                <div style="display: flex; gap: 16px; align-items: center; flex-wrap: wrap; margin-bottom: 12px;">
-                    <div><label>📌 决策准则类型</label>
-                        <select id="optimizationType">
-                            <option value="profit">收益型 (越大越好)</option>
-                            <option value="cost">成本型 (越小越好)</option>
-                        </select>
-                    </div>
-                    <div><button id="exampleFillBtn" class="secondary">📋 示例填充 (-50~100)</button>
-                    <button id="zeroFillBtn" class="secondary">🔄 统一设为0</button></div>
-                </div>
-                <div class="matrix-table-wrapper" id="matrixWrapper"></div>
-                <div class="footer-actions">
-                    <button id="prevStep1" class="secondary">← 上一步</button>
-                    <button id="nextStep1">下一步：决策分析 →</button>
-                </div>
-            </div>
-        </div>
-
-        <!-- 步骤 2: 结果展示 & 敏感性分析 -->
-        <div id="step2" class="step-content">
-            <div class="card">
-                <h3>📐 不确定型准则决策结果</h3>
-                <div class="sensitivity-area">
-                    <div style="display: flex; justify-content: space-between; flex-wrap: wrap; align-items: center;">
-                        <span class="serif-title" style="font-weight:600;">⚙️ 折中准则乐观系数 α</span>
-                        <div class="inline-slider">
-                            <span>α = </span>
-                            <input type="range" id="alphaSlider" min="0" max="1" step="0.01" value="0.5" style="width: 200px;">
-                            <span id="alphaValue" class="value-label">0.50</span>
-                        </div>
-                    </div>
-                    <p class="badge-rec" style="margin-top: 6px;">实时调整α，折中准则结果动态更新</p>
-                </div>
-
-                <div id="resultsContainer"></div>
-                
-                <div class="sensitivity-area" style="margin-top: 20px;">
-                    <h4>📉 后悔值矩阵 & 最小最大遗憾分析</h4>
-                    <div id="regretMatrixPanel"></div>
-                </div>
-                <div id="explanationText" style="background:#f9f9fc; padding: 16px; border-radius: 20px; margin: 20px 0; border-left: 5px solid #1a365d;"></div>
-                
-                <div class="footer-actions">
-                    <button id="prevStep2" class="secondary">← 上一步</button>
-                    <button id="saveProgressBtn">💾 保存进度 (JSON)</button>
-                    <input type="file" id="loadProgressInput" accept="application/json" style="display:none"/>
-                    <button id="loadProgressBtn" class="secondary">📂 加载进度</button>
-                </div>
-            </div>
+        <div class="progress-section">
+            <div class="progress-bar-bg"><div class="progress-fill" id="progressFill"></div></div>
+            <div class="step-indicator" id="stepIndicator"></div>
         </div>
     </div>
+
+    <div class="main-content" id="stepContentArea">
+        <div id="dynamicStepView"></div>
+        <div class="button-group" style="justify-content: space-between; margin-top: 25px;">
+            <button class="btn" id="prevStepBtn" style="visibility: hidden;">◀ 上一步</button>
+            <button class="btn btn-primary" id="nextStepBtn">下一步 ▶</button>
+        </div>
+    </div>
+    <footer>基于不确定型决策理论：乐观准则 · 悲观准则 · 折中准则 · 最小后悔值 · 等概率法 (Laplace) | 支持动态损益矩阵与α敏感性分析</footer>
 </div>
 
 <script>
-    // ------------------ 全局状态 ------------------
+    // ---------- 全局状态 ----------
     let state = {
-        altNames: [],      // 方案名称数组
-        stateNames: [],    // 状态名称数组
-        payoffs: [],       // 二维矩阵 (方案数x状态数)
-        type: "profit",    // "profit" or "cost"
+        stepIdx: 0,                 // 0: 基础设置, 1: 损益矩阵, 2: 决策结果
+        altNames: [],
+        stateNames: [],
+        payoffs: [],
+        type: "profit",            // "profit" 收益, "cost" 成本
         alpha: 0.5,
         altCount: 3,
         stateCount: 3
     };
+    let totalSteps = 3;
+    let stepValid = {0: false, 1: false, 2: false};
 
-    let currentStep = 0;  // 0:基础 1:矩阵 2:结果
-    const maxSteps = 2;
-
-    // DOM 元素
-    const stepContents = [document.getElementById("step0"), document.getElementById("step1"), document.getElementById("step2")];
-    const stepBadges = [document.getElementById("stepBadge0"), document.getElementById("stepBadge1"), document.getElementById("stepBadge2")];
-    const progressFill = document.getElementById("progressFill");
-
-    // 辅助函数：更新进度条和徽章样式
-    function updateProgressAndSteps() {
-        const totalSteps = maxSteps + 1;
-        let completed = 0;
-        for(let i=0; i<=currentStep; i++) { if(stateValidForStep(i)) completed = i+1; else break; }
-        const percent = (completed / totalSteps) * 100;
-        progressFill.style.width = `${percent}%`;
-        stepBadges.forEach((badge, idx) => {
-            badge.classList.remove("active", "completed");
-            if(idx < completed) badge.classList.add("completed");
-            if(idx === currentStep) badge.classList.add("active");
+    // ---------- 辅助函数 ----------
+    function escapeHtml(str) {
+        return String(str).replace(/[&<>]/g, function(m){
+            if(m==='&') return '&amp;';
+            if(m==='<') return '&lt;';
+            if(m==='>') return '&gt;';
+            return m;
         });
     }
 
-    // 步骤有效性校验
-    function stateValidForStep(step) {
-        if(step === 0) {
-            let altC = parseInt(document.getElementById("altCount").value);
-            let stateC = parseInt(document.getElementById("stateCount").value);
-            if(isNaN(altC) || altC<2 || altC>8) return false;
-            if(isNaN(stateC) || stateC<2 || stateC>6) return false;
-            return true;
+    // 验证当前步骤
+    function validateCurrentStep() {
+        if (state.stepIdx === 0) {
+            let altC = parseInt(document.getElementById("altCount")?.value) || state.altCount;
+            let stateC = parseInt(document.getElementById("stateCount")?.value) || state.stateCount;
+            let ok = (altC >= 2 && altC <= 8 && stateC >= 2 && stateC <= 6);
+            return ok;
         }
-        if(step === 1) {
-            if(state.payoffs.length !== state.altCount) return false;
-            for(let i=0;i<state.altCount;i++) {
-                if(state.payoffs[i].length !== state.stateCount) return false;
-                for(let j=0;j<state.stateCount;j++) {
-                    if(state.payoffs[i][j] === undefined || isNaN(parseFloat(state.payoffs[i][j]))) return false;
+        if (state.stepIdx === 1) {
+            if (!state.payoffs.length || state.payoffs.length !== state.altCount) return false;
+            for (let i=0; i<state.altCount; i++) {
+                if (!state.payoffs[i] || state.payoffs[i].length !== state.stateCount) return false;
+                for (let j=0; j<state.stateCount; j++) {
+                    let v = state.payoffs[i][j];
+                    if (v === undefined || isNaN(parseFloat(v))) return false;
                 }
             }
             return true;
         }
+        if (state.stepIdx === 2) return true;
         return true;
     }
 
-    // 重绘步骤0的命名区域
-    function renderStep0Names() {
-        let altCount = parseInt(document.getElementById("altCount").value);
-        let stateCount = parseInt(document.getElementById("stateCount").value);
-        if(isNaN(altCount)) altCount=3;
-        if(isNaN(stateCount)) stateCount=3;
-        const container = document.getElementById("namesInputArea");
-        let html = `<div class="grid-2col"><div><label>📌 方案名称列表</label>`;
-        for(let i=0;i<altCount;i++) {
+    function updateNavigationButtons() {
+        const prevBtn = document.getElementById('prevStepBtn');
+        const nextBtn = document.getElementById('nextStepBtn');
+        if (!prevBtn || !nextBtn) return;
+        prevBtn.style.visibility = state.stepIdx === 0 ? 'hidden' : 'visible';
+        let isValid = validateCurrentStep();
+        nextBtn.disabled = !isValid;
+        stepValid[state.stepIdx] = isValid;
+    }
+
+    function recomputeStepValidAll() {
+        for (let s = 0; s < totalSteps; s++) {
+            let originalIdx = state.stepIdx;
+            state.stepIdx = s;
+            stepValid[s] = validateCurrentStep();
+            state.stepIdx = originalIdx;
+        }
+        renderProgressAndSteps();
+        updateNavigationButtons();
+    }
+
+    // 同步表单数据到 state (数量/名称)
+    function syncFromStep0Inputs() {
+        let newAlt = parseInt(document.getElementById("altCount").value);
+        let newState = parseInt(document.getElementById("stateCount").value);
+        if (isNaN(newAlt)) newAlt = 3;
+        if (isNaN(newState)) newState = 3;
+        if (newAlt !== state.altCount || newState !== state.stateCount) {
+            state.altCount = newAlt;
+            state.stateCount = newState;
+            // 重置矩阵
+            state.payoffs = Array(state.altCount).fill().map(() => Array(state.stateCount).fill(0));
+            // 调整名称数组长度
+            let oldAltNames = [...state.altNames];
+            let oldStateNames = [...state.stateNames];
+            state.altNames = [];
+            for (let i=0; i<state.altCount; i++) state.altNames[i] = (oldAltNames[i] && i<oldAltNames.length) ? oldAltNames[i] : `方案${i+1}`;
+            state.stateNames = [];
+            for (let j=0; j<state.stateCount; j++) state.stateNames[j] = (oldStateNames[j] && j<oldStateNames.length) ? oldStateNames[j] : `状态${j+1}`;
+        } else {
+            // 采集当前名称输入框的值
+            document.querySelectorAll(".alt-name-input").forEach(inp => {
+                let idx = parseInt(inp.dataset.idx);
+                if (!isNaN(idx)) state.altNames[idx] = inp.value.trim() || `方案${idx+1}`;
+            });
+            document.querySelectorAll(".state-name-input").forEach(inp => {
+                let idx = parseInt(inp.dataset.idx);
+                if (!isNaN(idx)) state.stateNames[idx] = inp.value.trim() || `状态${idx+1}`;
+            });
+        }
+        // 确保payoffs维度正确
+        if (state.payoffs.length !== state.altCount || (state.payoffs[0] && state.payoffs[0].length !== state.stateCount)) {
+            state.payoffs = Array(state.altCount).fill().map(() => Array(state.stateCount).fill(0));
+        }
+    }
+
+    // 渲染步骤0: 基础设置
+    function renderStepFactors(container) {
+        let altCnt = state.altCount;
+        let stateCnt = state.stateCount;
+        let altNamesHtml = '';
+        for (let i=0; i<altCnt; i++) {
             let val = state.altNames[i] || `方案${i+1}`;
-            html += `<input type="text" class="alt-name-input" data-idx="${i}" value="${escapeHtml(val)}" style="margin-bottom:8px;">`;
+            altNamesHtml += `<input type="text" class="alt-name-input" data-idx="${i}" value="${escapeHtml(val)}" style="margin-bottom:8px; width:100%;">`;
         }
-        html += `</div><div><label>🌿 自然状态名称列表</label>`;
-        for(let j=0;j<stateCount;j++) {
+        let stateNamesHtml = '';
+        for (let j=0; j<stateCnt; j++) {
             let val = state.stateNames[j] || `状态${j+1}`;
-            html += `<input type="text" class="state-name-input" data-idx="${j}" value="${escapeHtml(val)}" style="margin-bottom:8px;">`;
+            stateNamesHtml += `<input type="text" class="state-name-input" data-idx="${j}" value="${escapeHtml(val)}" style="margin-bottom:8px; width:100%;">`;
         }
-        html += `</div></div>`;
-        container.innerHTML = html;
+        container.innerHTML = `
+            <div class="card">
+                <div class="step-title">📐 步骤1 · 决策基础信息</div>
+                <div class="grid-2col">
+                    <div class="input-group">
+                        <label>📊 方案数量 (2~8)</label>
+                        <input type="number" id="altCount" min="2" max="8" value="${altCnt}" step="1">
+                    </div>
+                    <div class="input-group">
+                        <label>🌍 自然状态数量 (2~6)</label>
+                        <input type="number" id="stateCount" min="2" max="6" value="${stateCnt}" step="1">
+                    </div>
+                </div>
+                <div style="display: flex; gap: 24px; flex-wrap: wrap; margin-top: 16px;">
+                    <div style="flex:1;"><label>📌 方案名称列表</label>${altNamesHtml}</div>
+                    <div style="flex:1;"><label>🌿 自然状态名称列表</label>${stateNamesHtml}</div>
+                </div>
+                <div class="button-group">
+                    <button id="resetNamesBtn" class="btn-outline btn">重置默认名称</button>
+                </div>
+            </div>
+        `;
+        // 绑定事件
+        document.getElementById("altCount").addEventListener("change", () => { syncFromStep0Inputs(); renderStepFactors(container); recomputeStepValidAll(); });
+        document.getElementById("stateCount").addEventListener("change", () => { syncFromStep0Inputs(); renderStepFactors(container); recomputeStepValidAll(); });
+        document.getElementById("resetNamesBtn").onclick = () => {
+            for(let i=0;i<state.altCount;i++) state.altNames[i]=`方案${i+1}`;
+            for(let j=0;j<state.stateCount;j++) state.stateNames[j]=`状态${j+1}`;
+            renderStepFactors(container);
+            recomputeStepValidAll();
+        };
         attachNameEvents();
+        recomputeStepValidAll();
+        updateNavigationButtons();
     }
 
     function attachNameEvents() {
-        document.querySelectorAll(".alt-name-input").forEach(inp => {
-            inp.addEventListener("change", function() {
-                let idx = parseInt(this.dataset.idx);
-                state.altNames[idx] = this.value.trim() || `方案${idx+1}`;
-            });
-        });
-        document.querySelectorAll(".state-name-input").forEach(inp => {
-            inp.addEventListener("change", function() {
-                let idx = parseInt(this.dataset.idx);
-                state.stateNames[idx] = this.value.trim() || `状态${idx+1}`;
-            });
-        });
+        document.querySelectorAll(".alt-name-input").forEach(inp => inp.addEventListener("change", function() {
+            let idx = parseInt(this.dataset.idx);
+            state.altNames[idx] = this.value.trim() || `方案${idx+1}`;
+            recomputeStepValidAll();
+        }));
+        document.querySelectorAll(".state-name-input").forEach(inp => inp.addEventListener("change", function() {
+            let idx = parseInt(this.dataset.idx);
+            state.stateNames[idx] = this.value.trim() || `状态${idx+1}`;
+            recomputeStepValidAll();
+        }));
     }
 
-    // 重建矩阵表
-    function renderMatrixTable() {
-        const wrapper = document.getElementById("matrixWrapper");
-        let altNames = state.altNames.length===state.altCount?state.altNames:Array(state.altCount).fill().map((_,i)=>`方案${i+1}`);
-        let stateNames = state.stateNames.length===state.stateCount?state.stateNames:Array(state.stateCount).fill().map((_,j)=>`状态${j+1}`);
-        let html = `<table><thead><tr><th>方案 \\ 状态</th>`;
-        for(let j=0;j<state.stateCount;j++) html+=`<th>${escapeHtml(stateNames[j])}</th>`;
-        html+=`</tr></thead><tbody>`;
-        for(let i=0;i<state.altCount;i++) {
-            html+=`<tr><td style="background:#f8fafc; font-weight:500;">${escapeHtml(altNames[i])}</td>`;
-            for(let j=0;j<state.stateCount;j++) {
-                let val = (state.payoffs[i] && typeof state.payoffs[i][j] === 'number') ? state.payoffs[i][j] : '';
-                html+=`<td><input type="number" step="any" class="matrix-cell" data-i="${i}" data-j="${j}" value="${val!==''?val:''}" style="width:90px;"></td>`;
+    // 渲染损益矩阵 (步骤1)
+    function renderMatrixTable(container) {
+        let altNames = state.altNames.map((n,i)=>n||`方案${i+1}`);
+        let stateNames = state.stateNames.map((n,j)=>n||`状态${j+1}`);
+        let html = `<div class="card">
+            <div class="step-title">📈 步骤2 · 损益值矩阵</div>
+            <div style="display: flex; gap: 16px; align-items: center; flex-wrap: wrap; margin-bottom: 12px;">
+                <div><label>📌 决策准则类型</label>
+                    <select id="optimizationType">
+                        <option value="profit" ${state.type==='profit'?'selected':''}>收益型 (越大越好)</option>
+                        <option value="cost" ${state.type==='cost'?'selected':''}>成本型 (越小越好)</option>
+                    </select>
+                </div>
+                <div><button id="exampleFillBtn" class="btn-outline btn">📋 随机示例 (-50~100)</button>
+                <button id="zeroFillBtn" class="btn-outline btn">🔄 统一设为0</button></div>
+            </div>
+            <div class="matrix-wrapper">
+                <table class="matrix-table">
+                    <thead><tr><th>方案 \\ 状态</th>${stateNames.map(s=>`<th>${escapeHtml(s)}</th>`).join('')}</tr></thead>
+                    <tbody>`;
+        for (let i=0; i<state.altCount; i++) {
+            html += `<tr><th style="background:#eef2ff;">${escapeHtml(altNames[i])}</th>`;
+            for (let j=0; j<state.stateCount; j++) {
+                let val = (state.payoffs[i] && typeof state.payoffs[i][j] === 'number') ? state.payoffs[i][j] : 0;
+                html += `<td><input type="number" step="any" class="matrix-cell" data-i="${i}" data-j="${j}" value="${val}" style="width:90px;"></td>`;
             }
-            html+=`</tr>`;
+            html += `</tr>`;
         }
-        html+=`</tbody>`;
-        wrapper.innerHTML = html;
-        // 绑定事件
+        html += `</tbody></table></div></div>`;
+        container.innerHTML = html;
+
+        document.getElementById("optimizationType").addEventListener("change", (e) => {
+            state.type = e.target.value;
+            if (state.stepIdx === 2) renderStepResults(container);
+            recomputeStepValidAll();
+        });
+        // 绑定矩阵单元事件
         document.querySelectorAll(".matrix-cell").forEach(cell => {
             cell.addEventListener("change", function() {
                 let i = parseInt(this.dataset.i);
                 let j = parseInt(this.dataset.j);
                 let v = parseFloat(this.value);
-                if(!isNaN(v)) {
-                    if(!state.payoffs[i]) state.payoffs[i]=[];
+                if (!isNaN(v)) {
+                    if (!state.payoffs[i]) state.payoffs[i] = [];
                     state.payoffs[i][j] = v;
                 } else {
-                    if(state.payoffs[i]) state.payoffs[i][j] = undefined;
+                    if (state.payoffs[i]) state.payoffs[i][j] = 0;
                 }
+                if (state.stepIdx === 2) renderStepResults(container);
+                recomputeStepValidAll();
             });
         });
+        document.getElementById("exampleFillBtn").onclick = () => {
+            for(let i=0;i<state.altCount;i++) for(let j=0;j<state.stateCount;j++) state.payoffs[i][j] = Math.floor(Math.random()*151)-50;
+            renderMatrixTable(container);
+            if(state.stepIdx === 2) renderStepResults(container);
+            recomputeStepValidAll();
+        };
+        document.getElementById("zeroFillBtn").onclick = () => {
+            for(let i=0;i<state.altCount;i++) for(let j=0;j<state.stateCount;j++) state.payoffs[i][j] = 0;
+            renderMatrixTable(container);
+            if(state.stepIdx === 2) renderStepResults(container);
+            recomputeStepValidAll();
+        };
+        recomputeStepValidAll();
+        updateNavigationButtons();
     }
 
-    // 从步骤0同步基础数量及名称
-    function syncFromStep0() {
-        let newAlt = parseInt(document.getElementById("altCount").value);
-        let newState = parseInt(document.getElementById("stateCount").value);
-        if(newAlt !== state.altCount || newState !== state.stateCount) {
-            state.altCount = newAlt;
-            state.stateCount = newState;
-            // 重置矩阵
-            state.payoffs = Array(state.altCount).fill().map(() => Array(state.stateCount).fill(0));
-            // 重置名称
-            let oldAltNames = [...state.altNames];
-            let oldStateNames = [...state.stateNames];
-            state.altNames = [];
-            for(let i=0;i<state.altCount;i++) state.altNames[i] = (oldAltNames[i] && i<oldAltNames.length)?oldAltNames[i]:`方案${i+1}`;
-            state.stateNames = [];
-            for(let j=0;j<state.stateCount;j++) state.stateNames[j] = (oldStateNames[j] && j<oldStateNames.length)?oldStateNames[j]:`状态${j+1}`;
-            renderStep0Names();
-        } else {
-            // 采集当前名称
-            document.querySelectorAll(".alt-name-input")?.forEach(inp => {
-                let idx = parseInt(inp.dataset.idx);
-                if(!isNaN(idx)) state.altNames[idx] = inp.value.trim() || `方案${idx+1}`;
-            });
-            document.querySelectorAll(".state-name-input")?.forEach(inp => {
-                let idx = parseInt(inp.dataset.idx);
-                if(!isNaN(idx)) state.stateNames[idx] = inp.value.trim() || `状态${idx+1}`;
-            });
-        }
-        renderMatrixTable();
-    }
-
-    // 核心决策计算
+    // ---------- 核心决策算法 (五种准则) ----------
     function computeAllCriteria() {
         let pay = state.payoffs.map(row => [...row]);
         let isCost = (state.type === "cost");
-        let alts = state.altCount;
-        let states = state.stateCount;
-        if(alts===0) return null;
-        // 1. 乐观: max of max/min? 收益型取max，成本型取min (越小越优)
-        let optValues = [];
-        for(let i=0;i<alts;i++) {
-            let rowVals = pay[i];
-            if(isCost) optValues.push(Math.min(...rowVals));
-            else optValues.push(Math.max(...rowVals));
+        let n = state.altCount;
+        let m = state.stateCount;
+        if (n===0) return null;
+
+        // 1. 乐观准则 (收益: max max; 成本: min min)
+        let optimisticVals = [];
+        for (let i=0;i<n;i++) {
+            if(isCost) optimisticVals.push(Math.min(...pay[i]));
+            else optimisticVals.push(Math.max(...pay[i]));
         }
-        let optimisticBestIdx = isCost ? optValues.indexOf(Math.min(...optValues)) : optValues.indexOf(Math.max(...optValues));
-        let optimisticVal = optValues[optimisticBestIdx];
-        // 2. 悲观: 收益型取每行最小; 成本型取每行最大
-        let pesValues = [];
-        for(let i=0;i<alts;i++) {
-            let rowVals = pay[i];
-            if(isCost) pesValues.push(Math.max(...rowVals));
-            else pesValues.push(Math.min(...rowVals));
+        let optimisticBestIdx = isCost ? optimisticVals.indexOf(Math.min(...optimisticVals)) : optimisticVals.indexOf(Math.max(...optimisticVals));
+
+        // 2. 悲观准则 (收益: max min; 成本: min max)
+        let pessimisticVals = [];
+        for (let i=0;i<n;i++) {
+            if(isCost) pessimisticVals.push(Math.max(...pay[i]));
+            else pessimisticVals.push(Math.min(...pay[i]));
         }
-        let pessimisticBestIdx = isCost ? pesValues.indexOf(Math.min(...pesValues)) : pesValues.indexOf(Math.max(...pesValues));
-        let pessimisticVal = pesValues[pessimisticBestIdx];
-        // 3. 折中: H = α*max + (1-α)*min
+        let pessimisticBestIdx = isCost ? pessimisticVals.indexOf(Math.min(...pessimisticVals)) : pessimisticVals.indexOf(Math.max(...pessimisticVals));
+
+        // 3. 折中准则 Hurwicz
         let alpha = state.alpha;
-        let compValues = [];
-        for(let i=0;i<alts;i++) {
-            let row = pay[i];
-            let maxV = Math.max(...row);
-            let minV = Math.min(...row);
-            let score = alpha*maxV + (1-alpha)*minV;
-            compValues.push(score);
+        let compromiseVals = [];
+        for (let i=0;i<n;i++) {
+            let maxV = Math.max(...pay[i]);
+            let minV = Math.min(...pay[i]);
+            let score = alpha * maxV + (1-alpha) * minV;
+            compromiseVals.push(score);
         }
-        let compromiseBestIdx = isCost ? compValues.indexOf(Math.min(...compValues)) : compValues.indexOf(Math.max(...compValues));
-        // 4. 最小后悔值准则
-        let regretMatrix = Array(alts).fill().map(()=>Array(states).fill(0));
-        for(let j=0;j<states;j++) {
-            let colValues = pay.map(row=>row[j]);
-            let ideal = isCost ? Math.min(...colValues) : Math.max(...colValues);
-            for(let i=0;i<alts;i++) {
-                if(isCost) regretMatrix[i][j] = pay[i][j] - ideal;   // 成本型: 后悔值 = 实际 - 最小成本
+        let compromiseBestIdx = isCost ? compromiseVals.indexOf(Math.min(...compromiseVals)) : compromiseVals.indexOf(Math.max(...compromiseVals));
+
+        // 4. 最小后悔值准则 (Minimax regret)
+        let regretMatrix = Array(n).fill().map(()=>Array(m).fill(0));
+        for (let j=0;j<m;j++) {
+            let colVals = pay.map(row=>row[j]);
+            let ideal = isCost ? Math.min(...colVals) : Math.max(...colVals);
+            for (let i=0;i<n;i++) {
+                if(isCost) regretMatrix[i][j] = pay[i][j] - ideal;
                 else regretMatrix[i][j] = ideal - pay[i][j];
             }
         }
         let maxRegretPerAlt = regretMatrix.map(row=>Math.max(...row));
-        let minMaxRegret = Math.min(...maxRegretPerAlt);
-        let minmaxIdx = maxRegretPerAlt.indexOf(minMaxRegret);
+        let minmaxRegret = Math.min(...maxRegretPerAlt);
+        let minmaxIdx = maxRegretPerAlt.indexOf(minmaxRegret);
+
+        // 5. 等概率准则 (Laplace) —— 新增
+        let laplaceVals = [];
+        for (let i=0;i<n;i++) {
+            let sum = pay[i].reduce((a,b)=>a+b,0);
+            let avg = sum / m;
+            laplaceVals.push(avg);
+        }
+        let laplaceBestIdx = isCost ? laplaceVals.indexOf(Math.min(...laplaceVals)) : laplaceVals.indexOf(Math.max(...laplaceVals));
+
         return {
-            optimistic: { idx: optimisticBestIdx, value: optimisticVal },
-            pessimistic: { idx: pessimisticBestIdx, value: pessimisticVal },
-            compromise: { idx: compromiseBestIdx, value: compValues[compromiseBestIdx] },
-            minmax: { idx: minmaxIdx, value: minMaxRegret, regretMatrix, maxRegretArray: maxRegretPerAlt }
+            optimistic: { idx: optimisticBestIdx, value: optimisticVals[optimisticBestIdx] },
+            pessimistic: { idx: pessimisticBestIdx, value: pessimisticVals[pessimisticBestIdx] },
+            compromise: { idx: compromiseBestIdx, value: compromiseVals[compromiseBestIdx], allVals: compromiseVals },
+            minmax: { idx: minmaxIdx, value: minmaxRegret, regretMatrix, maxRegretArray: maxRegretPerAlt },
+            laplace: { idx: laplaceBestIdx, value: laplaceVals[laplaceBestIdx], allVals: laplaceVals }
         };
     }
 
-    function renderResults() {
-        const res = computeAllCriteria();
-        if(!res) return;
+    function renderStepResults(container) {
+        let res = computeAllCriteria();
+        if (!res) {
+            container.innerHTML = `<div class="card"><div class="step-title">📐 决策结果</div><div class="warning">矩阵数据无效，请返回上一步完善损益值。</div></div>`;
+            return;
+        }
         let altNames = state.altNames;
         let isCostText = state.type === "profit" ? "收益型" : "成本型";
-        let container = document.getElementById("resultsContainer");
-        let html = `<div class="results-grid">
-            <div class="result-card"><strong>😎 乐观准则</strong><br>推荐：${escapeHtml(altNames[res.optimistic.idx])}<br>评价值：${res.optimistic.value.toFixed(4)}</div>
-            <div class="result-card"><strong>😟 悲观准则</strong><br>推荐：${escapeHtml(altNames[res.pessimistic.idx])}<br>评价值：${res.pessimistic.value.toFixed(4)}</div>
-            <div class="result-card"><strong>⚖️ 折中准则 (α=${state.alpha})</strong><br>推荐：${escapeHtml(altNames[res.compromise.idx])}<br>综合分数：${res.compromise.value.toFixed(4)}</div>
-            <div class="result-card"><strong>📉 最小后悔值准则</strong><br>推荐：${escapeHtml(altNames[res.minmax.idx])}<br>最大遗憾值：${res.minmax.value.toFixed(4)}</div>
-        </div>`;
+        let alphaVal = state.alpha;
+        let html = `
+            <div class="card">
+                <div class="step-title">📐 步骤3 · 不确定型准则决策结果</div>
+                <div class="sensitivity-area">
+                    <div style="display: flex; justify-content: space-between; flex-wrap: wrap; align-items: center;">
+                        <span class="serif-title" style="font-weight:600;">⚙️ 折中准则乐观系数 α</span>
+                        <div class="inline-slider">
+                            <span>α = </span>
+                            <input type="range" id="alphaSlider" min="0" max="1" step="0.01" value="${alphaVal}" style="width: 200px;">
+                            <span id="alphaValue" class="value-label">${alphaVal.toFixed(2)}</span>
+                        </div>
+                    </div>
+                    <p class="badge-rec" style="margin-top: 6px;">实时调整α，折中准则结果动态更新</p>
+                </div>
+                <div class="results-grid">
+                    <div class="result-card"><strong>😎 乐观准则</strong><br>推荐：${escapeHtml(altNames[res.optimistic.idx])}<br>评价值：${res.optimistic.value.toFixed(4)}</div>
+                    <div class="result-card"><strong>😟 悲观准则</strong><br>推荐：${escapeHtml(altNames[res.pessimistic.idx])}<br>评价值：${res.pessimistic.value.toFixed(4)}</div>
+                    <div class="result-card"><strong>⚖️ 折中准则 (α=${alphaVal})</strong><br>推荐：${escapeHtml(altNames[res.compromise.idx])}<br>综合分数：${res.compromise.value.toFixed(4)}</div>
+                    <div class="result-card"><strong>📉 最小后悔值准则</strong><br>推荐：${escapeHtml(altNames[res.minmax.idx])}<br>最大遗憾值：${res.minmax.value.toFixed(4)}</div>
+                    <div class="result-card"><strong>📐 等概率准则 (Laplace)</strong><br>推荐：${escapeHtml(altNames[res.laplace.idx])}<br>平均损益：${res.laplace.value.toFixed(4)}</div>
+                </div>
+                <div id="regretPanel"></div>
+                <div id="explanationText" style="background:#f9f9fc; padding: 16px; border-radius: 20px; margin: 16px 0; border-left: 5px solid #1e3a5f;"></div>
+            </div>
+        `;
         container.innerHTML = html;
+
         // 后悔值矩阵展示
-        let regretHtml = `<div class="matrix-table-wrapper"><table style="font-size:0.75rem;"><thead><tr><th>方案/状态</th>${state.stateNames.map(s=>`<th>${escapeHtml(s)}</th>`).join('')}<th>行最大遗憾</th></tr></thead><tbody>`;
-        for(let i=0;i<state.altCount;i++) {
-            regretHtml += `<tr><td>${escapeHtml(state.altNames[i])}</td>`;
-            for(let j=0;j<state.stateCount;j++) regretHtml += `<td>${res.minmax.regretMatrix[i][j].toFixed(2)}</td>`;
+        let regretHtml = `<div class="matrix-wrapper"><h4 style="margin-bottom:8px;">📊 后悔值矩阵 (Minimax遗憾)</h4><table class="matrix-table"><thead><tr><th>方案/状态</th>${state.stateNames.map(s=>`<th>${escapeHtml(s)}</th>`).join('')}<th>最大遗憾</th></tr></thead><tbody>`;
+        for (let i=0;i<state.altCount;i++) {
+            regretHtml += `<tr><th>${escapeHtml(state.altNames[i])}</th>`;
+            for (let j=0;j<state.stateCount;j++) regretHtml += `<td>${res.minmax.regretMatrix[i][j].toFixed(2)}</td>`;
             regretHtml += `<td><strong>${res.minmax.maxRegretArray[i].toFixed(4)}</strong></td></tr>`;
         }
         regretHtml += `</tbody></table></div>`;
-        document.getElementById("regretMatrixPanel").innerHTML = regretHtml;
+        document.getElementById("regretPanel").innerHTML = regretHtml;
 
         // 解释文本
-        let exp = `📋 决策结论：根据<strong>乐观准则</strong>，推荐【${escapeHtml(altNames[res.optimistic.idx])}】，预期${isCostText==="成本型"?"最小成本":"最大收益"}为 ${res.optimistic.value.toFixed(2)}。`;
-        exp += ` 根据<strong>悲观准则</strong>推荐【${escapeHtml(altNames[res.pessimistic.idx])}】，其${isCostText==="成本型"?"最大成本":"最小收益"}为 ${res.pessimistic.value.toFixed(2)}。`;
-        exp += ` 若决策者风险偏好适中 (α=${state.alpha})，<strong>折中准则</strong>推荐【${escapeHtml(altNames[res.compromise.idx])}】，综合评分为 ${res.compromise.value.toFixed(4)}。`;
-        exp += ` <strong>最小后悔值准则</strong>推荐【${escapeHtml(altNames[res.minmax.idx])}】，该方案最大遗憾值为 ${res.minmax.value.toFixed(4)}，旨在最小化决策后的遗憾。`;
+        let exp = `📋 决策结论：根据<strong>乐观准则</strong>推荐【${escapeHtml(altNames[res.optimistic.idx])}】，${isCostText==="成本型"?"最小成本":"最大收益"}为 ${res.optimistic.value.toFixed(2)}。 `;
+        exp += `<strong>悲观准则</strong>推荐【${escapeHtml(altNames[res.pessimistic.idx])}】，${isCostText==="成本型"?"最大成本":"最小收益"}为 ${res.pessimistic.value.toFixed(2)}。 `;
+        exp += `<strong>折中准则(α=${alphaVal})</strong>推荐【${escapeHtml(altNames[res.compromise.idx])}】，综合分 ${res.compromise.value.toFixed(4)}。 `;
+        exp += `<strong>最小后悔值</strong>推荐【${escapeHtml(altNames[res.minmax.idx])}】，最小化最大遗憾 ${res.minmax.value.toFixed(4)}。 `;
+        exp += `<strong>等概率法(Laplace)</strong>推荐【${escapeHtml(altNames[res.laplace.idx])}】，期望均值 ${res.laplace.value.toFixed(4)}，该准则假设每种状态等可能发生。`;
         document.getElementById("explanationText").innerHTML = `<p>${exp}</p>`;
+
+        // 绑定滑块
+        let slider = document.getElementById("alphaSlider");
+        let alphaSpan = document.getElementById("alphaValue");
+        slider.addEventListener("input", (e) => {
+            state.alpha = parseFloat(e.target.value);
+            alphaSpan.innerText = state.alpha.toFixed(2);
+            renderStepResults(container);
+        });
+        recomputeStepValidAll();
+        updateNavigationButtons();
     }
 
-    // 敏感性分析联动
-    function bindSensitivity() {
-        const slider = document.getElementById("alphaSlider");
-        const alphaSpan = document.getElementById("alphaValue");
-        slider.addEventListener("input", function() {
-            state.alpha = parseFloat(this.value);
-            alphaSpan.innerText = state.alpha.toFixed(2);
-            if(currentStep===2) {
-                renderResults();
-            }
-        });
+    // 渲染主控 (步骤分发)
+    function renderCurrentStep() {
+        const container = document.getElementById('dynamicStepView');
+        if (!container) return;
+        if (state.stepIdx === 0) renderStepFactors(container);
+        else if (state.stepIdx === 1) renderMatrixTable(container);
+        else if (state.stepIdx === 2) renderStepResults(container);
+        updateNavigationButtons();
+        renderProgressAndSteps();
+    }
+
+    function renderProgressAndSteps() {
+        let percent = ((state.stepIdx + 1) / totalSteps) * 100;
+        let fillBar = document.getElementById('progressFill');
+        if (fillBar) fillBar.style.width = `${percent}%`;
+        let stepsDiv = document.getElementById('stepIndicator');
+        if (!stepsDiv) return;
+        stepsDiv.innerHTML = '';
+        let stepNames = ['1. 基础设置', '2. 损益矩阵', '3. 决策结果'];
+        for (let i = 0; i < stepNames.length; i++) {
+            let badge = document.createElement('div');
+            badge.className = 'step-badge';
+            if (i === state.stepIdx) badge.classList.add('active');
+            if (stepValid[i] === true && i !== state.stepIdx) badge.classList.add('completed');
+            else if (stepValid[i] !== true && i !== state.stepIdx) badge.classList.add('pending');
+            badge.innerText = stepNames[i];
+            badge.onclick = (function(idx) { return () => { if (idx <= state.stepIdx + 1 && idx >= 0) { state.stepIdx = idx; renderCurrentStep(); } } })(i);
+            stepsDiv.appendChild(badge);
+        }
     }
 
     // 保存/加载
-    function saveProgress() {
-        const data = {
+    function saveToJSON() {
+        let dump = {
+            version: 2,
             altNames: state.altNames,
             stateNames: state.stateNames,
             payoffs: state.payoffs,
@@ -644,90 +735,78 @@
             altCount: state.altCount,
             stateCount: state.stateCount
         };
-        const str = JSON.stringify(data);
-        const blob = new Blob([str], {type:"application/json"});
-        const a = document.createElement("a");
+        let blob = new Blob([JSON.stringify(dump, null, 2)], {type:'application/json'});
+        let a = document.createElement('a');
         a.href = URL.createObjectURL(blob);
-        a.download = "decision_progress.json";
+        a.download = `decision_progress_${new Date().toISOString().slice(0,19)}.json`;
         a.click();
         URL.revokeObjectURL(a.href);
     }
-    function loadProgress(file) {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            try {
-                const obj = JSON.parse(e.target.result);
-                state = {...state, ...obj};
-                document.getElementById("altCount").value = state.altCount;
-                document.getElementById("stateCount").value = state.stateCount;
-                document.getElementById("optimizationType").value = state.type;
-                document.getElementById("alphaSlider").value = state.alpha;
-                document.getElementById("alphaValue").innerText = state.alpha.toFixed(2);
-                renderStep0Names();
-                renderMatrixTable();
-                if(stateValidForStep(1)) renderResults();
-                if(currentStep===2) renderResults();
-            } catch(e) { alert("加载文件失败"); }
-        };
-        reader.readAsText(file);
+
+    function loadFromJSON(jsonObj) {
+        try {
+            state.altNames = jsonObj.altNames || [];
+            state.stateNames = jsonObj.stateNames || [];
+            state.payoffs = jsonObj.payoffs || [];
+            state.type = jsonObj.type || "profit";
+            state.alpha = jsonObj.alpha !== undefined ? jsonObj.alpha : 0.5;
+            state.altCount = jsonObj.altCount || 3;
+            state.stateCount = jsonObj.stateCount || 3;
+            if (state.payoffs.length !== state.altCount || (state.payoffs[0] && state.payoffs[0].length !== state.stateCount)) {
+                state.payoffs = Array(state.altCount).fill().map(() => Array(state.stateCount).fill(0));
+            }
+            if (!state.altNames.length) for(let i=0;i<state.altCount;i++) state.altNames[i]=`方案${i+1}`;
+            if (!state.stateNames.length) for(let j=0;j<state.stateCount;j++) state.stateNames[j]=`状态${j+1}`;
+            state.stepIdx = 0;
+            renderCurrentStep();
+            recomputeStepValidAll();
+        } catch(e) { alert("加载失败: "+e.message); }
     }
 
-    // 事件初始化与导航
-    function initEventListeners() {
-        document.getElementById("nextStep0").onclick = () => { syncFromStep0(); if(stateValidForStep(1)) { currentStep=1; updateStepView(); } };
-        document.getElementById("prevStep1").onclick = () => { currentStep=0; updateStepView(); };
-        document.getElementById("nextStep1").onclick = () => { syncFromStep0(); if(stateValidForStep(1)) { currentStep=2; renderResults(); updateStepView(); } };
-        document.getElementById("prevStep2").onclick = () => { currentStep=1; updateStepView(); };
-        document.getElementById("saveProgressBtn").onclick = saveProgress;
-        document.getElementById("loadProgressBtn").onclick = () => document.getElementById("loadProgressInput").click();
-        document.getElementById("loadProgressInput").onchange = (e) => { if(e.target.files[0]) loadProgress(e.target.files[0]); };
-        document.getElementById("optimizationType").addEventListener("change", (e)=> { state.type = e.target.value; if(currentStep===2) renderResults(); });
-        document.getElementById("exampleFillBtn").onclick = () => {
-            for(let i=0;i<state.altCount;i++) for(let j=0;j<state.stateCount;j++) state.payoffs[i][j] = Math.floor(Math.random()*151)-50;
-            renderMatrixTable();
-            if(currentStep===2) renderResults();
-        };
-        document.getElementById("zeroFillBtn").onclick = () => {
-            for(let i=0;i<state.altCount;i++) for(let j=0;j<state.stateCount;j++) state.payoffs[i][j] = 0;
-            renderMatrixTable();
-            if(currentStep===2) renderResults();
-        };
-        document.getElementById("resetNamesBtn").onclick = () => {
-            for(let i=0;i<state.altCount;i++) state.altNames[i]=`方案${i+1}`;
-            for(let j=0;j<state.stateCount;j++) state.stateNames[j]=`状态${j+1}`;
-            renderStep0Names();
-        };
-        document.getElementById("altCount").addEventListener("change", () => { renderStep0Names(); });
-        document.getElementById("stateCount").addEventListener("change", () => { renderStep0Names(); });
-        bindSensitivity();
-    }
-    function updateStepView() {
-        stepContents.forEach((c,i)=>c.classList.toggle("active-step", i===currentStep));
-        updateProgressAndSteps();
-        if(currentStep===1) renderMatrixTable();
-        if(currentStep===0) renderStep0Names();
-    }
-    function escapeHtml(str) { return String(str).replace(/[&<>]/g, function(m){if(m==='&') return '&amp;'; if(m==='<') return '&lt;'; if(m==='>') return '&gt;'; return m;}); }
-    
-    // 初始化默认数据
-    function initDefaultState() {
-        state.altCount=3; state.stateCount=3;
-        state.altNames=["方案A","方案B","方案C"];
-        state.stateNames=["景气","一般","萧条"];
+    // 初始化默认数据 (与原始示例一致)
+    function initDefault() {
+        state.altCount = 3; state.stateCount = 3;
+        state.altNames = ["方案A","方案B","方案C"];
+        state.stateNames = ["景气","一般","萧条"];
         state.payoffs = [[80,60,20],[70,65,30],[50,45,40]];
         state.type = "profit";
         state.alpha = 0.5;
-        document.getElementById("altCount").value = 3;
-        document.getElementById("stateCount").value=3;
-        document.getElementById("optimizationType").value="profit";
-        document.getElementById("alphaSlider").value=0.5;
-        document.getElementById("alphaValue").innerText="0.50";
-        renderStep0Names();
-        renderMatrixTable();
+        state.stepIdx = 0;
     }
-    initDefaultState();
-    initEventListeners();
-    updateStepView();
+    initDefault();
+
+    // 事件绑定及导航
+    document.getElementById('saveProgressBtn').onclick = () => saveToJSON();
+    document.getElementById('loadProgressBtn').onclick = () => document.getElementById('loadFileInput').click();
+    document.getElementById('loadFileInput').onchange = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = ev => {
+            try { loadFromJSON(JSON.parse(ev.target.result)); }
+            catch(err) { alert("无效JSON文件"); }
+        };
+        reader.readAsText(file);
+        e.target.value = '';
+    };
+    document.getElementById('nextStepBtn').onclick = () => {
+        if (state.stepIdx + 1 < totalSteps) {
+            if (validateCurrentStep()) {
+                if (state.stepIdx === 0) syncFromStep0Inputs();
+                if (state.stepIdx === 1) { /* 同步名称矩阵已经在事件中处理 */ }
+                state.stepIdx++;
+                renderCurrentStep();
+            } else { alert("当前步骤信息未完整，请填写后再继续。"); }
+        } else { alert("决策分析已完成，可调整α或重新加载数据。"); }
+    };
+    document.getElementById('prevStepBtn').onclick = () => {
+        if (state.stepIdx > 0) {
+            state.stepIdx--;
+            renderCurrentStep();
+        }
+    };
+    recomputeStepValidAll();
+    renderCurrentStep();
 </script>
 </body>
 </html>
