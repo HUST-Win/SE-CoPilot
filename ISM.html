@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
     <title>解释结构模型(ISM)学术分析工具 | 系统工程方法论</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600&family=Georgia,serif&display=swap" rel="stylesheet">
+    <!-- SheetJS 核心库，用于Excel导入 -->
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
     <style>
         * {
             box-sizing: border-box;
@@ -198,6 +200,22 @@
             border-radius: 8px;
             border: 1px solid #cbd5e1;
         }
+        /* 可编辑单元格样式 */
+        .editable-cell {
+            cursor: pointer;
+            transition: background 0.1s;
+        }
+        .editable-cell.editing {
+            padding: 0;
+        }
+        .editable-cell input {
+            width: 60px;
+            padding: 6px;
+            text-align: center;
+            border-radius: 6px;
+            border: 1px solid #2c3e66;
+            font-size: 0.8rem;
+        }
 
         .button-group {
             display: flex;
@@ -277,13 +295,42 @@
             border-radius: 14px;
             margin-top: 20px;
         }
-        details {
-            margin: 12px 0;
+        /* 模态框样式 */
+        .modal-mask {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            backdrop-filter: blur(4px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
         }
-        summary {
-            cursor: pointer;
-            font-weight: 600;
-            color: #2c3e66;
+        .modal-container {
+            background: white;
+            border-radius: 32px;
+            max-width: 680px;
+            width: 90%;
+            padding: 24px;
+            box-shadow: 0 20px 35px rgba(0,0,0,0.2);
+        }
+        .modal-container textarea {
+            width: 100%;
+            height: 260px;
+            font-family: monospace;
+            font-size: 0.85rem;
+            padding: 12px;
+            border-radius: 16px;
+            border: 1px solid #cbd5e1;
+        }
+        .modal-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+            margin-top: 20px;
         }
 
         @media (max-width: 700px) {
@@ -298,13 +345,30 @@
             color: #64748b;
             background: #f9fbfd;
         }
+        .level-simple-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: #ffffff;
+            border-radius: 12px;
+            overflow: hidden;
+            margin: 12px 0;
+        }
+        .level-simple-table th, .level-simple-table td {
+            border: 1px solid #e2e8f0;
+            padding: 10px 12px;
+            text-align: left;
+        }
+        .level-simple-table th {
+            background: #eef2ff;
+            font-weight: 600;
+        }
     </style>
 </head>
 <body>
 <div class="app-container" id="appRoot">
     <div class="header">
         <div class="title-row">
-            <h1>🔗 解释结构模型（ISM）</h1>
+            <h1>解释结构模型（ISM）</h1>
             <div class="toolbar">
                 <button class="tool-btn" id="saveProgressBtn">💾 保存进度 (JSON)</button>
                 <input type="file" id="loadFileInput" accept=".json" style="display: none;" />
@@ -324,26 +388,26 @@
             <button class="btn btn-primary" id="nextStepBtn">下一步 ▶</button>
         </div>
     </div>
-    <footer>🏛️ 基于 Warfield (1974) ISM 方法论 | 传递闭包 + 层级抽取 | 骨架矩阵可选 | 回路检测</footer>
+    <footer>基于 Warfield (1974) ISM 方法论 | 传递闭包 + 层级抽取 | 骨架矩阵 | 支持粘贴/Excel导入矩阵</footer>
 </div>
 
 <script>
     // ---------- ISM 全局状态 ----------
     let state = {
         stepIdx: 0,                 // 0: 要素设置, 1: 关系判断, 2: 计算展示, 3: 可视化
-        factors: [],               // [{ name, desc }]
-        adjMatrix: [],             // n x n 0/1
+        factors: [],
+        adjMatrix: [],
         reachabilityMatrix: [],
-        levels: [],                // [{ level: 1, elements: [索引] }] 顶层在前
+        levels: [],
         skeletonMatrix: [],
-        sccs: [],                  // 强连通分量
+        sccs: [],
         matrixComputed: false,
-        stepValid: {}              // 各步骤完成性校验
+        stepValid: {}
     };
 
     let totalSteps = 4;
 
-    // ---------- ISM 算法核心 ----------
+    // ---------- ISM 算法核心 (保持严格逻辑) ----------
     class ISMAnalyzer {
         static computeReachability(adj, n) {
             let M = Array(n).fill().map(() => Array(n).fill(0));
@@ -352,6 +416,7 @@
                     M[i][j] = (i === j) ? 1 : adj[i][j];
                 }
             }
+            // Warshall算法
             for (let k = 0; k < n; k++) {
                 for (let i = 0; i < n; i++) {
                     if (M[i][k]) {
@@ -364,7 +429,7 @@
             return M;
         }
 
-        static findLevels(reachMat, n, factorNames) {
+        static findLevels(reachMat, n) {
             let tempMat = reachMat.map(row => [...row]);
             let assigned = new Array(n).fill(false);
             let levelsResult = [];
@@ -385,10 +450,8 @@
                     }
                 }
                 if (levelElems.length === 0) break;
-                for (let idx of levelElems) {
-                    assigned[idx] = true;
-                    remaining--;
-                }
+                for (let idx of levelElems) assigned[idx] = true;
+                remaining -= levelElems.length;
                 levelsResult.push({ level: levelIdx, elements: [...levelElems] });
                 for (let i = 0; i < n; i++) {
                     for (let idx of levelElems) {
@@ -401,7 +464,7 @@
                 levelIdx++;
             }
             levelsResult.reverse();
-            return { levels: levelsResult };
+            return levelsResult;
         }
 
         static detectSCC(adj, n) {
@@ -447,42 +510,27 @@
             let depend = new Array(n).fill(0);
             for (let i = 0; i < n; i++) {
                 drive[i] = reachMat[i].reduce((a,b) => a+b, 0);
-                for (let j = 0; j < n; j++) {
-                    depend[i] += reachMat[j][i];
-                }
+                for (let j = 0; j < n; j++) depend[i] += reachMat[j][i];
             }
             return { drive, depend };
         }
     }
 
-    // 核心校验函数：步骤1是否有关系
     function hasAnyRelation() {
         if (!state.adjMatrix.length) return false;
-        for (let i = 0; i < state.adjMatrix.length; i++) {
-            for (let j = 0; j < state.adjMatrix.length; j++) {
+        for (let i = 0; i < state.adjMatrix.length; i++)
+            for (let j = 0; j < state.adjMatrix.length; j++)
                 if (i !== j && state.adjMatrix[i][j] === 1) return true;
-            }
-        }
         return false;
     }
 
     function validateCurrentStep() {
-        if (state.stepIdx === 0) {
-            if (!state.factors.length) return false;
-            return state.factors.every(f => f.name && f.name.trim() !== "");
-        }
-        if (state.stepIdx === 1) {
-            if (!state.adjMatrix.length) return false;
-            return hasAnyRelation();
-        }
-        if (state.stepIdx === 2) {
-            return state.matrixComputed === true && state.levels.length > 0;
-        }
-        if (state.stepIdx === 3) return true;
+        if (state.stepIdx === 0) return state.factors.length > 0 && state.factors.every(f => f.name && f.name.trim() !== "");
+        if (state.stepIdx === 1) return state.adjMatrix.length > 0 && hasAnyRelation();
+        if (state.stepIdx === 2) return state.matrixComputed === true && state.levels.length > 0;
         return true;
     }
 
-    // 更新导航按钮状态（在每次可能改变时调用）
     function updateNavigationButtons() {
         const prevBtn = document.getElementById('prevStepBtn');
         const nextBtn = document.getElementById('nextStepBtn');
@@ -494,14 +542,12 @@
     }
 
     function recomputeStepValidAll() {
-        let validMap = {};
         for (let s = 0; s < totalSteps; s++) {
             let originalIdx = state.stepIdx;
             state.stepIdx = s;
-            validMap[s] = validateCurrentStep();
+            state.stepValid[s] = validateCurrentStep();
             state.stepIdx = originalIdx;
         }
-        state.stepValid = validMap;
         renderProgressAndSteps();
         updateNavigationButtons();
     }
@@ -511,8 +557,8 @@
         if (n === 0) return;
         const R = ISMAnalyzer.computeReachability(state.adjMatrix, n);
         state.reachabilityMatrix = R;
-        const levelRes = ISMAnalyzer.findLevels(R, n, state.factors.map(f => f.name));
-        state.levels = levelRes.levels;
+        const levelsRaw = ISMAnalyzer.findLevels(R, n);
+        state.levels = levelsRaw;
         state.sccs = ISMAnalyzer.detectSCC(state.adjMatrix, n);
         state.skeletonMatrix = ISMAnalyzer.computeSkeleton(R, n);
         state.matrixComputed = true;
@@ -529,422 +575,324 @@
         state.adjMatrix = Array(n).fill().map(() => Array(n).fill(0));
         state.matrixComputed = false;
         state.levels = [];
-        state.sccs = [];
     }
 
-    function loadExampleSupplyChain() {
-        state.factors = [
-            { name: "供应商产能波动", desc: "供应端不确定性" },
-            { name: "物流中断风险", desc: "运输阻滞" },
-            { name: "需求剧烈波动", desc: "市场需求不稳定" },
-            { name: "库存策略失效", desc: "安全库存不足" },
-            { name: "信息系统故障", desc: "数据延迟" }
-        ];
-        let n = 5;
-        state.adjMatrix = Array(n).fill().map(() => Array(n).fill(0));
-        let edges = [[0,1],[0,2],[1,3],[2,3],[3,4],[2,4]];
-        edges.forEach(([i,j]) => { if(i<n && j<n) state.adjMatrix[i][j]=1; });
-        state.matrixComputed = false;
-        recomputeStepValidAll();
-        renderCurrentStep();
-    }
-    function loadExampleEdu() {
-        state.factors = [
-            { name: "教学清晰度", desc: "教师表达逻辑" },
-            { name: "学生动机", desc: "内在驱动力" },
-            { name: "课堂互动", desc: "参与程度" },
-            { name: "学习资源", desc: "教材/在线" },
-            { name: "考核反馈", desc: "及时评估" }
-        ];
-        let n = 5;
-        state.adjMatrix = Array(n).fill().map(() => Array(n).fill(0));
-        let edges = [[0,2],[1,2],[2,3],[3,4],[1,4],[0,4]];
-        edges.forEach(([i,j]) => { if(i<n && j<n) state.adjMatrix[i][j]=1; });
-        state.matrixComputed = false;
-        recomputeStepValidAll();
-        renderCurrentStep();
-    }
-
-    function renderCurrentStep() {
-        const container = document.getElementById('dynamicStepView');
-        if (!container) return;
-        if (state.stepIdx === 0) renderStepFactors(container);
-        else if (state.stepIdx === 1) renderStepRelations(container);
-        else if (state.stepIdx === 2) renderStepCompute(container);
-        else if (state.stepIdx === 3) renderStepVisualize(container);
-        
-        updateNavigationButtons();
-        renderProgressAndSteps();
-    }
-
-    function renderProgressAndSteps() {
-        const percent = ((state.stepIdx + 1) / totalSteps) * 100;
-        const fillBar = document.getElementById('progressFill');
-        if (fillBar) fillBar.style.width = `${percent}%`;
-        const stepsDiv = document.getElementById('stepIndicator');
-        if (!stepsDiv) return;
-        stepsDiv.innerHTML = '';
-        const stepNames = ['1. 要素设置', '2. 关系判断', '3. 计算展示', '4. 可视化与解释'];
-        for (let i = 0; i < stepNames.length; i++) {
-            let badge = document.createElement('div');
-            badge.className = 'step-badge';
-            if (i === state.stepIdx) badge.classList.add('active');
-            if (state.stepValid[i] === true && i !== state.stepIdx) badge.classList.add('completed');
-            else if (state.stepValid[i] !== true && i !== state.stepIdx) badge.classList.add('pending');
-            badge.innerText = stepNames[i];
-            badge.onclick = (function(idx) { return () => { if (idx <= state.stepIdx + 1 && idx >= 0) { state.stepIdx = idx; renderCurrentStep(); } } })(i);
-            stepsDiv.appendChild(badge);
+    // 矩阵填充辅助函数（解析粘贴文本）
+    function parseMatrixText(text, expectedN) {
+        // 支持制表符、空格、逗号分隔；自动识别行列
+        let lines = text.trim().split(/\r?\n/);
+        let rows = [];
+        for (let line of lines) {
+            if (line.trim() === "") continue;
+            let parts = line.split(/[ ,\t]+/).filter(p => p !== "");
+            if (parts.length === 0) continue;
+            let row = parts.map(v => {
+                let num = parseInt(v, 10);
+                return (num === 0 || num === 1) ? num : null;
+            });
+            if (row.some(v => v === null)) return null;
+            rows.push(row);
         }
+        if (rows.length !== expectedN) return null;
+        if (rows.some(r => r.length !== expectedN)) return null;
+        return rows;
     }
 
-    // 步骤0
-    function renderStepFactors(container) {
-        const n = state.factors.length || 3;
-        container.innerHTML = `
-            <div class="card">
-                <div class="step-title">📋 步骤1 · 系统要素定义</div>
-                <div class="input-group"><label>要素数量 (3~15):</label><input type="number" id="factorCount" min="3" max="15" value="${n}" style="width:100px;"></div>
-                <div class="button-group">
-                    <button class="btn-outline btn" id="initFactorsBtn">🔄 初始化要素</button>
-                    <button class="btn-outline btn" id="exampleSupplyBtn">📦 供应链风险示例</button>
-                    <button class="btn-outline btn" id="exampleEduBtn">🎓 课堂效果示例</button>
+    // 从Excel文件读取矩阵 (使用SheetJS)
+    function readExcelMatrix(file, n) {
+        return new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                const json = XLSX.utils.sheet_to_json(firstSheet, { header: 1, defval: "" });
+                if (!json || json.length < n) return resolve(null);
+                let matrix = [];
+                for (let i = 0; i < n; i++) {
+                    let row = json[i];
+                    if (!row || row.length < n) return resolve(null);
+                    let parsedRow = [];
+                    for (let j = 0; j < n; j++) {
+                        let val = row[j];
+                        let num = (val === 1 || val === "1" || val === true) ? 1 : ((val === 0 || val === "0" || val === false) ? 0 : null);
+                        if (num === null) return resolve(null);
+                        parsedRow.push(num);
+                    }
+                    matrix.push(parsedRow);
+                }
+                resolve(matrix);
+            };
+            reader.readAsArrayBuffer(file);
+        });
+    }
+
+    function exportAdjMatrixToCSV() {
+        let n = state.adjMatrix.length;
+        if (n === 0) return;
+        let csvRows = [];
+        csvRows.push(state.factors.map(f => f.name).join(","));
+        for (let i = 0; i < n; i++) {
+            csvRows.push(state.adjMatrix[i].join(","));
+        }
+        let blob = new Blob([csvRows.join("\n")], { type: "text/csv" });
+        let a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = "ism_adjacency_matrix.csv";
+        a.click();
+        URL.revokeObjectURL(a.href);
+    }
+
+    function showPasteModal() {
+        const n = state.factors.length;
+        const modalDiv = document.createElement('div');
+        modalDiv.className = 'modal-mask';
+        modalDiv.innerHTML = `
+            <div class="modal-container">
+                <h3 style="margin-bottom:12px">📋 粘贴 ${n}×${n} 0/1 矩阵</h3>
+                <p style="font-size:0.8rem; color:#475569;">支持制表符、空格或逗号分隔，请保证矩阵维度为 ${n}x${n}，仅包含0和1。</p>
+                <textarea id="pasteMatrixArea" placeholder="示例：&#10;0 1 0&#10;0 0 1&#10;1 0 0"></textarea>
+                <div class="modal-actions">
+                    <button class="btn" id="cancelPasteBtn">取消</button>
+                    <button class="btn btn-primary" id="confirmPasteBtn">解析并填充</button>
                 </div>
-                <div id="factorsTableArea" style="margin-top:20px;"></div>
             </div>
         `;
-        document.getElementById('factorCount').addEventListener('change', (e) => {
-            let cnt = parseInt(e.target.value);
-            if (cnt >= 3 && cnt <= 15) initFactorsFromCount(cnt);
-            renderStepFactors(container);
-        });
-        document.getElementById('initFactorsBtn').onclick = () => { initFactorsFromCount(parseInt(document.getElementById('factorCount').value)); renderStepFactors(container); recomputeStepValidAll(); };
-        document.getElementById('exampleSupplyBtn').onclick = () => { loadExampleSupplyChain(); renderStepFactors(container); };
-        document.getElementById('exampleEduBtn').onclick = () => { loadExampleEdu(); renderStepFactors(container); };
-        renderFactorTable();
+        document.body.appendChild(modalDiv);
+        const closeModal = () => modalDiv.remove();
+        document.getElementById('cancelPasteBtn').onclick = closeModal;
+        document.getElementById('confirmPasteBtn').onclick = () => {
+            const raw = document.getElementById('pasteMatrixArea').value;
+            const parsed = parseMatrixText(raw, n);
+            if (parsed) {
+                for (let i=0; i<n; i++)
+                    for (let j=0; j<n; j++)
+                        if (i !== j) state.adjMatrix[i][j] = parsed[i][j];
+                state.matrixComputed = false;
+                renderCurrentStep();
+                alert("矩阵已更新");
+            } else {
+                alert(`解析失败，请确保是 ${n}x${n} 的0/1矩阵且分隔符正确。`);
+            }
+            closeModal();
+        };
     }
 
-    function renderFactorTable() {
-        const container = document.getElementById('factorsTableArea');
-        if (!container) return;
-        let html = `<div class="matrix-wrapper"><table class="matrix-table"><thead><tr><th>#</th><th>要素名称</th><th>描述(可选)</th></thead><tbody>`;
-        state.factors.forEach((f, idx) => {
-            html += `<tr>
-                <td>${idx+1}</td>
-                <td><input type="text" value="${escapeHtml(f.name)}" data-idx="${idx}" class="factor-name-input" style="width:140px;"></td>
-                <td><input type="text" value="${escapeHtml(f.desc)}" data-idx="${idx}" class="factor-desc-input" placeholder="简要描述" style="width:200px;"></td>
-            </tr>`;
-        });
-        html += `</tbody></table></div>`;
-        container.innerHTML = html;
-        document.querySelectorAll('.factor-name-input').forEach(inp => {
-            inp.addEventListener('change', (e) => { let idx = parseInt(e.target.dataset.idx); state.factors[idx].name = e.target.value; recomputeStepValidAll(); });
-        });
-        document.querySelectorAll('.factor-desc-input').forEach(inp => {
-            inp.addEventListener('change', (e) => { let idx = parseInt(e.target.dataset.idx); state.factors[idx].desc = e.target.value; });
-        });
+    async function handleExcelImport(fileInput) {
+        const file = fileInput.files[0];
+        if (!file) return;
+        const n = state.factors.length;
+        const matrix = await readExcelMatrix(file, n);
+        if (matrix) {
+            for (let i=0; i<n; i++)
+                for (let j=0; j<n; j++)
+                    if (i !== j) state.adjMatrix[i][j] = matrix[i][j];
+            state.matrixComputed = false;
+            renderCurrentStep();
+            alert("成功从Excel导入矩阵");
+        } else {
+            alert(`导入失败：请确保Excel第一块区域为 ${n}x${n} 的0/1矩阵。`);
+        }
+        fileInput.value = '';
     }
 
-    // 步骤1: 关系判断 - 关键修复：每次修改后立即更新按钮状态
+    // 渲染步骤2（关系矩阵）增强版，支持可编辑单元格、粘贴/导入/导出
     function renderStepRelations(container) {
         const n = state.factors.length;
         if (n === 0) { initFactorsFromCount(3); renderStepRelations(container); return; }
         let html = `<div class="card"><div class="step-title">🔗 步骤2 · 直接影响关系 (邻接矩阵)</div>
         <div class="button-group">
-            <button class="btn-outline btn" id="symmetryFillBtn">🔄 对称填充 (i→j ⇒ j→i)</button>
-            <button class="btn-outline btn" id="transitiveHintBtn">🧠 传递闭包预览/补全</button>
+            <button class="btn-outline btn" id="symmetryFillBtn">🔄 对称填充</button>
+            <button class="btn-outline btn" id="transitiveHintBtn">🧠 传递闭包预览</button>
             <button class="btn-outline btn" id="checkIsolatedBtn">🔍 孤立要素检查</button>
             <button class="btn-outline btn" id="clearAllRelBtn">🗑️ 清空所有关系</button>
+            <button class="btn-outline btn" id="pasteMatrixBtn">📋 粘贴矩阵</button>
+            <button class="btn-outline btn" id="excelImportBtn">📎 从Excel导入</button>
+            <button class="btn-outline btn" id="exportMatrixBtn">📤 导出矩阵CSV</button>
         </div>
-        <div class="matrix-wrapper"><table class="matrix-table"><thead><tr><th>→ 影响/被影响 ↓</th>${state.factors.map((f,i)=>`<th>${escapeHtml(f.name)}<br><span style="font-size:0.7rem;">(列j)</span></th>`).join('')}</tr></thead><tbody>`;
+        <div class="matrix-wrapper"><table class="matrix-table" id="editableMatrixTable"><thead><tr><th>→ 影响 / 被影响 ↓</th>${state.factors.map((f,i)=>`<th>${escapeHtml(f.name)}<br><span style="font-size:0.7rem;">(列j)</span></th>`).join('')}</thead><tbody>`;
         for (let i = 0; i < n; i++) {
             html += `<tr><th style="background:#eef2ff;">${escapeHtml(state.factors[i].name)} <br><span style="font-size:0.65rem;">(行i)</span></th>`;
             for (let j = 0; j < n; j++) {
-                let val = state.adjMatrix[i][j];
-                let selectedYes = val===1 ? 'selected' : '';
-                let selectedNo = val===0 ? 'selected' : '';
-                let disabled = (i===j) ? 'disabled' : '';
-                html += `<td>${ i===j ? '—' : `<select class="relation-select" data-i="${i}" data-j="${j}" ${disabled}>
-                            <option value="0" ${selectedNo}>否</option><option value="1" ${selectedYes}>是</option>
-                        </select>` }</td>`;
+                if (i === j) {
+                    html += `<td class="diag-cell">—</td>`;
+                } else {
+                    let val = state.adjMatrix[i][j];
+                    html += `<td class="editable-cell" data-i="${i}" data-j="${j}">${val}</td>`;
+                }
             }
             html += `</tr>`;
         }
-        html += `</tbody></table></div><div class="info-panel"><i class="math">A[i][j]=1</i> 表示要素 i 直接影响要素 j。</div></div>`;
+        html += `</tbody></table></div><div class="info-panel"><i class="math">A[i][j]=1 表示要素 i 直接影响要素 j。双击表格单元格可直接编辑0/1值。</i></div></div>`;
         container.innerHTML = html;
-        
-        // 绑定关系变更事件 - 关键：每次修改后更新按钮状态
-        const attachEvents = () => {
-            document.querySelectorAll('.relation-select').forEach(sel => {
-                // 移除旧监听，避免重复
-                sel.removeEventListener('change', sel._listener);
+
+        // 绑定可编辑单元格双击事件
+        const attachEditableEvents = () => {
+            const cells = document.querySelectorAll('.editable-cell');
+            cells.forEach(cell => {
+                cell.removeEventListener('dblclick', cell._editListener);
                 const listener = (e) => {
-                    let i = parseInt(sel.dataset.i), j = parseInt(sel.dataset.j);
-                    state.adjMatrix[i][j] = parseInt(sel.value);
-                    state.matrixComputed = false;
-                    // 关键：立即更新步骤有效性和按钮状态
-                    recomputeStepValidAll();
-                    updateNavigationButtons();
+                    if (cell.classList.contains('editing')) return;
+                    const i = parseInt(cell.dataset.i);
+                    const j = parseInt(cell.dataset.j);
+                    const currentVal = state.adjMatrix[i][j];
+                    cell.classList.add('editing');
+                    const input = document.createElement('input');
+                    input.type = 'text';
+                    input.value = currentVal;
+                    input.style.width = '60px';
+                    input.style.textAlign = 'center';
+                    cell.innerHTML = '';
+                    cell.appendChild(input);
+                    input.focus();
+                    const saveEdit = () => {
+                        let newVal = parseInt(input.value.trim(), 10);
+                        if (isNaN(newVal) || (newVal !== 0 && newVal !== 1)) newVal = 0;
+                        state.adjMatrix[i][j] = newVal;
+                        state.matrixComputed = false;
+                        cell.classList.remove('editing');
+                        cell.innerHTML = newVal;
+                        recomputeStepValidAll();
+                        updateNavigationButtons();
+                        attachEditableEvents(); // 重新绑定事件
+                    };
+                    input.addEventListener('blur', saveEdit);
+                    input.addEventListener('keypress', (e) => { if (e.key === 'Enter') { saveEdit(); } });
                 };
-                sel.addEventListener('change', listener);
-                sel._listener = listener;
+                cell.addEventListener('dblclick', listener);
+                cell._editListener = listener;
             });
         };
-        
-        attachEvents();
-        
-        // 绑定按钮事件
-        const symBtn = document.getElementById('symmetryFillBtn');
-        if (symBtn) symBtn.onclick = () => { 
-            for (let i = 0; i < state.adjMatrix.length; i++)
-                for (let j = 0; j < state.adjMatrix.length; j++)
+
+        attachEditableEvents();
+
+        // 辅助按钮
+        document.getElementById('symmetryFillBtn').onclick = () => {
+            for (let i = 0; i < n; i++)
+                for (let j = 0; j < n; j++)
                     if (state.adjMatrix[i][j] === 1) state.adjMatrix[j][i] = 1;
             state.matrixComputed = false;
             renderStepRelations(container);
         };
-        const transBtn = document.getElementById('transitiveHintBtn');
-        if (transBtn) transBtn.onclick = () => {
-            let n2 = state.adjMatrix.length;
+        document.getElementById('transitiveHintBtn').onclick = () => {
             let newMat = state.adjMatrix.map(row => [...row]);
             let changed = false;
-            for (let k = 0; k < n2; k++)
-                for (let i = 0; i < n2; i++)
-                    for (let j = 0; j < n2; j++)
+            for (let k = 0; k < n; k++)
+                for (let i = 0; i < n; i++)
+                    for (let j = 0; j < n; j++)
                         if (newMat[i][k] && newMat[k][j] && !newMat[i][j]) { newMat[i][j] = 1; changed = true; }
-            if (changed) {
-                state.adjMatrix = newMat;
-                alert("已自动补充传递闭包中隐含的关系（基于当前邻接矩阵）。");
-            } else alert("无新增传递关系。");
-            state.matrixComputed = false;
-            renderStepRelations(container);
+            if (changed) { state.adjMatrix = newMat; alert("已补充传递闭包隐含关系。"); state.matrixComputed = false; renderStepRelations(container); }
+            else alert("无新增传递关系。");
         };
-        const isolatedBtn = document.getElementById('checkIsolatedBtn');
-        if (isolatedBtn) isolatedBtn.onclick = () => {
-            let n2 = state.adjMatrix.length;
+        document.getElementById('checkIsolatedBtn').onclick = () => {
             let isolated = [];
-            for (let i = 0; i < n2; i++) {
+            for (let i = 0; i < n; i++) {
                 let out = state.adjMatrix[i].some(v => v === 1);
                 let inp = state.adjMatrix.some(row => row[i] === 1);
                 if (!out && !inp) isolated.push(state.factors[i].name);
             }
-            alert(isolated.length ? `孤立要素: ${isolated.join(', ')}` : "无孤立要素，每个要素至少参与影响或被影响。");
+            alert(isolated.length ? `孤立要素: ${isolated.join(', ')}` : "无孤立要素。");
         };
-        const clearBtn = document.getElementById('clearAllRelBtn');
-        if (clearBtn) clearBtn.onclick = () => {
-            for (let i = 0; i < state.adjMatrix.length; i++)
-                for (let j = 0; j < state.adjMatrix.length; j++)
+        document.getElementById('clearAllRelBtn').onclick = () => {
+            for (let i = 0; i < n; i++)
+                for (let j = 0; j < n; j++)
                     if (i !== j) state.adjMatrix[i][j] = 0;
             state.matrixComputed = false;
             renderStepRelations(container);
         };
-        
-        // 确保按钮状态正确更新
-        setTimeout(() => { recomputeStepValidAll(); updateNavigationButtons(); }, 10);
+        document.getElementById('pasteMatrixBtn').onclick = () => showPasteModal();
+        const excelFileInput = document.createElement('input');
+        excelFileInput.type = 'file';
+        excelFileInput.accept = '.xlsx, .csv';
+        excelFileInput.style.display = 'none';
+        document.body.appendChild(excelFileInput);
+        document.getElementById('excelImportBtn').onclick = () => excelFileInput.click();
+        excelFileInput.onchange = (e) => handleExcelImport(e.target);
+        document.getElementById('exportMatrixBtn').onclick = () => exportAdjMatrixToCSV();
+        recomputeStepValidAll();
+        updateNavigationButtons();
     }
 
-    // 步骤2: 计算展示
+    // 步骤3: 简化展示，层级表用简洁表格，无过多图标
     function renderStepCompute(container) {
         if (!state.matrixComputed) computeISM();
         let html = `<div class="card"><div class="step-title">📐 步骤3 · 可达矩阵与层级划分</div>
         <details><summary><b>📊 可达矩阵 (传递闭包)</b></summary>${renderMatrixHtml(state.reachabilityMatrix, "可达矩阵 R")}</details>
-        <details><summary><b>🔍 层级划分详细过程 (R(i), Q(i), C(i))</b></summary><div id="levelProcessDetail"></div></details>
-        <div class="level-display"><b>🏷️ 最终层级表 (顶层 → 底层)</b><ul id="finalLevelList"></ul></div>
+        <div><b>📋 层级划分表 (简洁学术风格)</b>
+        <table class="level-simple-table"><thead><tr><th>层级</th><th>包含要素</th><th>驱动力(R集大小)</th><th>依赖性(Q集大小)</th></tr></thead><tbody>${generateSimpleLevelTableRows()}</tbody></table></div>
         <details><summary><b>🧬 骨架矩阵 (剔除传递冗余)</b></summary>${renderMatrixHtml(state.skeletonMatrix, "骨架矩阵 A'")}</details>
         <div class="result-box"><b>📈 驱动力-依赖性分析</b><div id="driverDependencyInfo"></div></div>
         </div>`;
         container.innerHTML = html;
-        displayLevelProcess();
-        displayFinalLevels();
-        displayDriverDependency();
+        displayDriverDependencySimple();
         recomputeStepValidAll();
     }
-    
+
+    function generateSimpleLevelTableRows() {
+        let rows = '';
+        const { drive, depend } = ISMAnalyzer.computeDriverDependency(state.reachabilityMatrix, state.factors.length);
+        for (let lev of state.levels) {
+            let elems = lev.elements.map(idx => state.factors[idx].name).join(', ');
+            let driveSum = lev.elements.map(idx => drive[idx]).join('/');
+            let dependSum = lev.elements.map(idx => depend[idx]).join('/');
+            rows += `<tr><td>Level ${lev.level}</td><td>${elems}</td><td>${driveSum}</td><td>${dependSum}</td></tr>`;
+        }
+        return rows;
+    }
+
+    function displayDriverDependencySimple() {
+        let div = document.getElementById('driverDependencyInfo');
+        if (!div) return;
+        let { drive, depend } = ISMAnalyzer.computeDriverDependency(state.reachabilityMatrix, state.factors.length);
+        let maxDriveIdx = drive.indexOf(Math.max(...drive));
+        let maxDependIdx = depend.indexOf(Math.max(...depend));
+        div.innerHTML = `<span>驱动力 (可达集大小): ${state.factors.map((f,i)=>`${f.name}:${drive[i]}`).join(', ')}</span><br>
+        <span>依赖性 (先行集大小): ${state.factors.map((f,i)=>`${f.name}:${depend[i]}`).join(', ')}</span><br>
+        🔥 根源驱动要素: ${state.factors[maxDriveIdx].name} (驱动力=${drive[maxDriveIdx]}) &nbsp;| 🎯 结果依赖要素: ${state.factors[maxDependIdx].name} (依赖性=${depend[maxDependIdx]})`;
+        if(state.sccs.length) div.innerHTML += `<div class="warning">⚠️ 强连通分量(回路): ${state.sccs.map(c=>`[${c.map(i=>state.factors[i].name).join(',')}]`).join(', ')}</div>`;
+    }
+
     function renderMatrixHtml(mat, title) {
         if (!mat || !mat.length) return "<div>暂无数据</div>";
         let n = mat.length;
-        let html = `<div class="matrix-wrapper"><table class="matrix-table"><thead><tr><th>${title}</th>${state.factors.map(f=>`<th>${escapeHtml(f.name)}</th>`).join('')}</tr></thead><tbody>`;
+        let html = `<div class="matrix-wrapper"><table class="matrix-table"><thead><tr><th>${title}</th>${state.factors.map(f=>`<th>${escapeHtml(f.name)}</th>`).join('')}</thead><tbody>`;
         for(let i=0;i<n;i++){ html+=`<tr><th>${escapeHtml(state.factors[i].name)}</th>`; for(let j=0;j<n;j++) html+=`<td>${mat[i][j]}</td>`; html+=`</tr>`; }
         html+=`</tbody></table></div>`;
         return html;
     }
-    
-    function displayLevelProcess() {
-        const container = document.getElementById('levelProcessDetail');
-        if (!container) return;
-        let n = state.factors.length;
-        let tempAssigned = new Array(n).fill(false);
-        let tempMat = state.reachabilityMatrix.map(r=>[...r]);
-        let levelIdx = 1;
-        let html = '';
-        let levelsReverse = [...state.levels].reverse();
-        for (let lev of levelsReverse) {
-            let elems = lev.elements;
-            html += `<div style="border-left: 6px solid #2c553c; margin:12px 0; padding-left:16px;"><b>第 ${levelIdx} 层</b> (自顶向下): 要素 ${elems.map(idx=>state.factors[idx].name).join(', ')}<br>`;
-            for (let i of elems) {
-                let Rset=[], Qset=[];
-                for(let j=0;j<n;j++){ if(state.reachabilityMatrix[i][j]===1) Rset.push(state.factors[j].name); }
-                for(let j=0;j<n;j++){ if(state.reachabilityMatrix[j][i]===1) Qset.push(state.factors[j].name); }
-                let intersect = Rset.filter(x=>Qset.includes(x));
-                html += `<span class="math">R(${state.factors[i].name}) = {${Rset.join(',')}} ; Q = {${Qset.join(',')}} ; R∩Q = {${intersect.join(',')}} → 满足条件</span><br>`;
-            }
-            html += `</div>`;
-            levelIdx++;
-        }
-        container.innerHTML = html || '<i>层级划分已执行</i>';
-    }
-    
-    function displayFinalLevels() {
-        let ul = document.getElementById('finalLevelList');
-        if(!ul) return;
-        ul.innerHTML = '';
-        state.levels.forEach(lev => {
-            let li = document.createElement('li');
-            li.innerHTML = `<b>Level ${lev.level}</b>: ${lev.elements.map(idx=>state.factors[idx].name).join(' → ')}`;
-            ul.appendChild(li);
-        });
-    }
-    
-    function displayDriverDependency() {
-        let div = document.getElementById('driverDependencyInfo');
-        if(!div) return;
-        let { drive, depend } = ISMAnalyzer.computeDriverDependency(state.reachabilityMatrix, state.factors.length);
-        let maxDrive = Math.max(...drive);
-        let maxDriveIdx = drive.indexOf(maxDrive);
-        let maxDepend = Math.max(...depend);
-        let maxDependIdx = depend.indexOf(maxDepend);
-        div.innerHTML = `<span class="math">驱动力 (可达集大小)</span>: ${state.factors.map((f,i)=>`${f.name}:${drive[i]}`).join(', ')}<br>
-        <span class="math">依赖性 (先行集大小)</span>: ${state.factors.map((f,i)=>`${f.name}:${depend[i]}`).join(', ')}<br>
-        🔥 根源驱动要素: ${state.factors[maxDriveIdx].name} (驱动力=${maxDrive}) &nbsp;| 🎯 结果依赖要素: ${state.factors[maxDependIdx].name} (依赖性=${maxDepend})`;
-        if(state.sccs.length) div.innerHTML += `<div class="warning">⚠️ 强连通分量(回路): ${state.sccs.map(c=>`[${c.map(i=>state.factors[i].name).join(',')}]`).join(', ')} 应视为整体分析。</div>`;
-    }
 
-    // 步骤3: 可视化
-    function renderStepVisualize(container) {
-        if (!state.matrixComputed) computeISM();
-        container.innerHTML = `<div class="card"><div class="step-title">🌐 步骤4 · 有向层级拓扑图</div>
-        <canvas id="ismCanvas" width="900" height="550" style="width:100%; height:auto; max-width:1000px; background:#fff; border:1px solid #ddd;"></canvas>
-        <div class="info-panel" id="explanationText"></div>
-        <div class="button-group"><button id="exportPNG" class="btn-outline btn">📸 导出为PNG</button>
-        <button id="exportCSV" class="btn-outline btn">📎 层级表CSV</button></div></div>`;
-        drawHierarchyGraph();
-        generateExplanation();
-        document.getElementById('exportPNG').onclick = () => { let canvas=document.getElementById('ismCanvas'); let link=document.createElement('a'); link.download='ISM_hierarchy.png'; link.href=canvas.toDataURL(); link.click(); };
-        document.getElementById('exportCSV').onclick = () => exportLevelsCSV();
-        recomputeStepValidAll();
+    function renderStepFactors(container) { /* 原样保留简洁 */ 
+        const n = state.factors.length || 3;
+        container.innerHTML = `<div class="card"><div class="step-title">📋 步骤1 · 系统要素定义</div><div class="input-group"><label>要素数量 (3~15):</label><input type="number" id="factorCount" min="3" max="15" value="${n}" style="width:100px;"></div><div class="button-group"><button class="btn-outline btn" id="initFactorsBtn">🔄 初始化要素</button><button class="btn-outline btn" id="exampleSupplyBtn">📦 供应链风险示例</button><button class="btn-outline btn" id="exampleEduBtn">🎓 课堂效果示例</button></div><div id="factorsTableArea" style="margin-top:20px;"></div></div>`;
+        document.getElementById('factorCount').addEventListener('change', (e) => { let cnt = parseInt(e.target.value); if (cnt>=3 && cnt<=15) initFactorsFromCount(cnt); renderStepFactors(container); });
+        document.getElementById('initFactorsBtn').onclick = () => { initFactorsFromCount(parseInt(document.getElementById('factorCount').value)); renderStepFactors(container); recomputeStepValidAll(); };
+        document.getElementById('exampleSupplyBtn').onclick = () => { loadExampleSupplyChain(); renderStepFactors(container); };
+        document.getElementById('exampleEduBtn').onclick = () => { loadExampleEdu(); renderStepFactors(container); };
+        renderFactorTable();
     }
-
-    function drawHierarchyGraph() {
-        let canvas = document.getElementById('ismCanvas');
-        if(!canvas) return;
-        let ctx = canvas.getContext('2d');
-        let w = canvas.clientWidth, h = canvas.clientHeight;
-        canvas.width = w; canvas.height = h;
-        ctx.clearRect(0,0,w,h);
-        if(!state.levels.length) return;
-        let levelMap = new Map();
-        state.levels.forEach(lev => { lev.elements.forEach(el => levelMap.set(el, lev.level)); });
-        let maxLevel = Math.max(...Array.from(levelMap.values()));
-        let nodesPerLevel = new Map();
-        state.factors.forEach((_,idx) => { let lvl=levelMap.get(idx)||1; let arr=nodesPerLevel.get(lvl)||[]; arr.push(idx); nodesPerLevel.set(lvl,arr); });
-        let positions = [];
-        for(let lvl=1; lvl<=maxLevel; lvl++) {
-            let nodes = nodesPerLevel.get(lvl)||[];
-            let y = 60 + (maxLevel - lvl) * (h-120)/Math.max(1,maxLevel-1);
-            let xStep = w/(nodes.length+1);
-            nodes.forEach((node, idx) => { positions[node] = { x: xStep*(idx+1), y: y }; });
-        }
-        for(let i=0;i<state.factors.length;i++) {
-            for(let j=0;j<state.factors.length;j++) {
-                if(state.skeletonMatrix[i][j]===1 && positions[i] && positions[j]) {
-                    ctx.beginPath(); ctx.moveTo(positions[i].x, positions[i].y);
-                    ctx.lineTo(positions[j].x, positions[j].y);
-                    ctx.strokeStyle = '#6c8b5e'; ctx.lineWidth = 2;
-                    ctx.stroke(); drawArrowhead(ctx, positions[i].x, positions[i].y, positions[j].x, positions[j].y);
-                }
-            }
-        }
-        for(let i=0;i<state.factors.length;i++) {
-            let p = positions[i];
-            if(!p) continue;
-            ctx.beginPath(); ctx.arc(p.x, p.y, 28, 0, 2*Math.PI); ctx.fillStyle='#eef2ff'; ctx.fill(); ctx.strokeStyle='#2c3e66'; ctx.lineWidth=2; ctx.stroke();
-            ctx.fillStyle='#1e293b'; ctx.font='bold 12px "Inter"'; ctx.fillText(state.factors[i].name, p.x-20, p.y+4);
-        }
+    function renderFactorTable() { /* 略保持原样 */ 
+        let container = document.getElementById('factorsTableArea');
+        if(!container) return;
+        let html = `<div class="matrix-wrapper"><table class="matrix-table"><thead><tr><th>#</th><th>要素名称</th><th>描述(可选)</th></thead><tbody>`;
+        state.factors.forEach((f, idx) => { html += `<tr><td>${idx+1}</td><td><input type="text" value="${escapeHtml(f.name)}" data-idx="${idx}" class="factor-name-input" style="width:140px;"></td><td><input type="text" value="${escapeHtml(f.desc)}" data-idx="${idx}" class="factor-desc-input" placeholder="简要描述" style="width:200px;"></td></tr>`; });
+        html += `</tbody></table></div>`;
+        container.innerHTML = html;
+        document.querySelectorAll('.factor-name-input').forEach(inp => inp.addEventListener('change', (e) => { let idx = parseInt(e.target.dataset.idx); state.factors[idx].name = e.target.value; recomputeStepValidAll(); }));
     }
-    
-    function drawArrowhead(ctx, fromX, fromY, toX, toY) {
-        let angle = Math.atan2(toY - fromY, toX - fromX);
-        let arrowX = toX - 15 * Math.cos(angle), arrowY = toY - 15 * Math.sin(angle);
-        ctx.beginPath(); ctx.moveTo(arrowX, arrowY);
-        ctx.lineTo(arrowX - 8 * Math.cos(angle - Math.PI/6), arrowY - 8 * Math.sin(angle - Math.PI/6));
-        ctx.lineTo(arrowX - 8 * Math.cos(angle + Math.PI/6), arrowY - 8 * Math.sin(angle + Math.PI/6));
-        ctx.fillStyle = '#2c3e66'; ctx.fill();
-    }
-    
-    function generateExplanation() {
-        let n=state.factors.length, L=state.levels.length;
-        let topEls = state.levels[0]?.elements.map(i=>state.factors[i].name).join(',') || '无';
-        let bottomEls = state.levels[state.levels.length-1]?.elements.map(i=>state.factors[i].name).join(',') || '无';
-        let sccText = state.sccs.length ? `<strong>⚠️ 强连通分量回路:</strong> ${state.sccs.map(scc=>`[${scc.map(i=>state.factors[i].name)}]`).join(', ')} 应视为整体。` : '未检测到强连通回路。';
-        let { drive, depend } = ISMAnalyzer.computeDriverDependency(state.reachabilityMatrix, n);
-        let maxDriveIdx = drive.indexOf(Math.max(...drive));
-        let maxDepIdx = depend.indexOf(Math.max(...depend));
-        document.getElementById('explanationText').innerHTML = `<i class="math">📖 系统包含${n}个要素，划分出${L}个层级。顶层结果要素：【${topEls}】；底层根本驱动要素：【${bottomEls}】。建议优先干预底层要素。${sccText}<br>✨ 驱动力最高: ${state.factors[maxDriveIdx].name}; 依赖性最高: ${state.factors[maxDepIdx].name}。基于Warfield(1974)方法论，骨架矩阵保留最简结构。</i>`;
-    }
-    
-    function exportLevelsCSV() {
-        let csv = "层级,要素名称\n";
-        state.levels.forEach(lev => { lev.elements.forEach(idx => { csv += `${lev.level},${state.factors[idx].name}\n`; }); });
-        let blob = new Blob([csv], {type:"text/csv"}); let a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = "ISM_levels.csv"; a.click();
-    }
-    
+    function renderStepVisualize(container) { if (!state.matrixComputed) computeISM(); container.innerHTML = `<div class="card"><div class="step-title">🌐 步骤4 · 有向层级拓扑图</div><canvas id="ismCanvas" width="900" height="550" style="width:100%; height:auto; max-width:1000px; background:#fff; border:1px solid #ddd;"></canvas><div class="info-panel" id="explanationText"></div><div class="button-group"><button id="exportPNG" class="btn-outline btn">📸 导出为PNG</button><button id="exportCSV" class="btn-outline btn">📎 层级表CSV</button></div></div>`; drawHierarchyGraph(); generateExplanation(); document.getElementById('exportPNG').onclick = () => { let canvas=document.getElementById('ismCanvas'); let link=document.createElement('a'); link.download='ISM_hierarchy.png'; link.href=canvas.toDataURL(); link.click(); }; document.getElementById('exportCSV').onclick = () => exportLevelsCSV(); recomputeStepValidAll(); }
+    function drawHierarchyGraph() { /* 原逻辑保持 */ let canvas = document.getElementById('ismCanvas'); if(!canvas) return; let ctx = canvas.getContext('2d'); let w = canvas.clientWidth, h = canvas.clientHeight; canvas.width = w; canvas.height = h; ctx.clearRect(0,0,w,h); if(!state.levels.length) return; let levelMap = new Map(); state.levels.forEach(lev => { lev.elements.forEach(el => levelMap.set(el, lev.level)); }); let maxLevel = Math.max(...Array.from(levelMap.values())); let nodesPerLevel = new Map(); state.factors.forEach((_,idx) => { let lvl=levelMap.get(idx)||1; let arr=nodesPerLevel.get(lvl)||[]; arr.push(idx); nodesPerLevel.set(lvl,arr); }); let positions = []; for(let lvl=1; lvl<=maxLevel; lvl++) { let nodes = nodesPerLevel.get(lvl)||[]; let y = 60 + (maxLevel - lvl) * (h-120)/Math.max(1,maxLevel-1); let xStep = w/(nodes.length+1); nodes.forEach((node, idx) => { positions[node] = { x: xStep*(idx+1), y: y }; }); } for(let i=0;i<state.factors.length;i++) for(let j=0;j<state.factors.length;j++) if(state.skeletonMatrix[i][j]===1 && positions[i] && positions[j]) { ctx.beginPath(); ctx.moveTo(positions[i].x, positions[i].y); ctx.lineTo(positions[j].x, positions[j].y); ctx.strokeStyle = '#6c8b5e'; ctx.lineWidth = 2; ctx.stroke(); drawArrowhead(ctx, positions[i].x, positions[i].y, positions[j].x, positions[j].y); } for(let i=0;i<state.factors.length;i++) { let p = positions[i]; if(!p) continue; ctx.beginPath(); ctx.arc(p.x, p.y, 28, 0, 2*Math.PI); ctx.fillStyle='#eef2ff'; ctx.fill(); ctx.strokeStyle='#2c3e66'; ctx.lineWidth=2; ctx.stroke(); ctx.fillStyle='#1e293b'; ctx.font='bold 12px "Inter"'; ctx.fillText(state.factors[i].name, p.x-20, p.y+4); } }
+    function drawArrowhead(ctx, fromX, fromY, toX, toY) { let angle = Math.atan2(toY - fromY, toX - fromX); let arrowX = toX - 15 * Math.cos(angle), arrowY = toY - 15 * Math.sin(angle); ctx.beginPath(); ctx.moveTo(arrowX, arrowY); ctx.lineTo(arrowX - 8 * Math.cos(angle - Math.PI/6), arrowY - 8 * Math.sin(angle - Math.PI/6)); ctx.lineTo(arrowX - 8 * Math.cos(angle + Math.PI/6), arrowY - 8 * Math.sin(angle + Math.PI/6)); ctx.fillStyle = '#2c3e66'; ctx.fill(); }
+    function generateExplanation() { let n=state.factors.length, L=state.levels.length; let topEls = state.levels[0]?.elements.map(i=>state.factors[i].name).join(',') || '无'; let bottomEls = state.levels[state.levels.length-1]?.elements.map(i=>state.factors[i].name).join(',') || '无'; let sccText = state.sccs.length ? `<strong>⚠️ 强连通分量回路:</strong> ${state.sccs.map(scc=>`[${scc.map(i=>state.factors[i].name)}]`).join(', ')} 应视为整体。` : '未检测到强连通回路。'; let { drive, depend } = ISMAnalyzer.computeDriverDependency(state.reachabilityMatrix, n); let maxDriveIdx = drive.indexOf(Math.max(...drive)); let maxDepIdx = depend.indexOf(Math.max(...depend)); document.getElementById('explanationText').innerHTML = `<i>📖 系统包含${n}个要素，划分出${L}个层级。顶层结果要素：【${topEls}】；底层根本驱动要素：【${bottomEls}】。建议优先干预底层要素。${sccText}<br>✨ 驱动力最高: ${state.factors[maxDriveIdx].name}; 依赖性最高: ${state.factors[maxDepIdx].name}。</i>`; }
+    function exportLevelsCSV() { let csv = "层级,要素名称\n"; state.levels.forEach(lev => { lev.elements.forEach(idx => { csv += `${lev.level},${state.factors[idx].name}\n`; }); }); let blob = new Blob([csv], {type:"text/csv"}); let a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = "ISM_levels.csv"; a.click(); }
+    function loadExampleSupplyChain() { state.factors = [{name:"供应商产能波动",desc:""},{name:"物流中断风险",desc:""},{name:"需求剧烈波动",desc:""},{name:"库存策略失效",desc:""},{name:"信息系统故障",desc:""}]; let n=5; state.adjMatrix = Array(n).fill().map(()=>Array(n).fill(0)); let edges=[[0,1],[0,2],[1,3],[2,3],[3,4],[2,4]]; edges.forEach(([i,j])=>{state.adjMatrix[i][j]=1;}); state.matrixComputed=false; recomputeStepValidAll(); renderCurrentStep(); }
+    function loadExampleEdu() { state.factors = [{name:"教学清晰度",desc:""},{name:"学生动机",desc:""},{name:"课堂互动",desc:""},{name:"学习资源",desc:""},{name:"考核反馈",desc:""}]; let n=5; state.adjMatrix = Array(n).fill().map(()=>Array(n).fill(0)); let edges=[[0,2],[1,2],[2,3],[3,4],[1,4],[0,4]]; edges.forEach(([i,j])=>{state.adjMatrix[i][j]=1;}); state.matrixComputed=false; recomputeStepValidAll(); renderCurrentStep(); }
     function escapeHtml(str) { return String(str).replace(/[&<>]/g, function(m){ if(m==='&') return '&amp;'; if(m==='<') return '&lt;'; if(m==='>') return '&gt;'; return m;}); }
-
-    // 保存/加载
-    function saveToJSON() {
-        let dump = { version:1, factors:state.factors, adjMatrix:state.adjMatrix, stepIdx:state.stepIdx };
-        let blob = new Blob([JSON.stringify(dump,null,2)], {type:'application/json'});
-        let a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `ism_progress_${new Date().toISOString().slice(0,19)}.json`; a.click(); URL.revokeObjectURL(a.href);
-    }
-    
-    function loadFromJSON(jsonObj) {
-        try{
-            state.factors = jsonObj.factors;
-            state.adjMatrix = jsonObj.adjMatrix;
-            state.stepIdx = jsonObj.stepIdx || 0;
-            state.matrixComputed = false;
-            recomputeStepValidAll();
-            renderCurrentStep();
-        } catch(e){ alert("加载失败"); }
-    }
-
-    // 事件绑定
-    document.getElementById('saveProgressBtn').onclick = () => saveToJSON();
-    document.getElementById('loadProgressBtn').onclick = () => document.getElementById('loadFileInput').click();
-    document.getElementById('loadFileInput').onchange = (e) => {
-        const file = e.target.files[0];
-        if(!file) return;
-        const reader = new FileReader();
-        reader.onload = ev => { try{ loadFromJSON(JSON.parse(ev.target.result)); } catch(err){ alert("无效JSON"); } };
-        reader.readAsText(file);
-        e.target.value = '';
-    };
-    document.getElementById('nextStepBtn').onclick = () => { 
-        if (state.stepIdx + 1 < totalSteps) {
-            if (validateCurrentStep()) {
-                state.stepIdx++; 
-                renderCurrentStep();
-            } else {
-                alert("当前步骤尚未完成，请完善后继续。");
-            }
-        } else {
-            alert("已完成全部步骤");
-        }
-    };
-    document.getElementById('prevStepBtn').onclick = () => { if(state.stepIdx>0) { state.stepIdx--; renderCurrentStep(); } };
-
-    // 初始化
-    initFactorsFromCount(3);
-    recomputeStepValidAll();
-    renderCurrentStep();
+    function saveToJSON() { let dump = { version:1, factors:state.factors, adjMatrix:state.adjMatrix, stepIdx:state.stepIdx }; let blob = new Blob([JSON.stringify(dump,null,2)], {type:'application/json'}); let a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `ism_progress_${new Date().toISOString().slice(0,19)}.json`; a.click(); URL.revokeObjectURL(a.href); }
+    function loadFromJSON(jsonObj) { try{ state.factors = jsonObj.factors; state.adjMatrix = jsonObj.adjMatrix; state.stepIdx = jsonObj.stepIdx || 0; state.matrixComputed=false; recomputeStepValidAll(); renderCurrentStep(); } catch(e){ alert("加载失败"); } }
+    function renderCurrentStep() { const container = document.getElementById('dynamicStepView'); if (!container) return; if (state.stepIdx === 0) renderStepFactors(container); else if (state.stepIdx === 1) renderStepRelations(container); else if (state.stepIdx === 2) renderStepCompute(container); else if (state.stepIdx === 3) renderStepVisualize(container); updateNavigationButtons(); renderProgressAndSteps(); }
+    function renderProgressAndSteps() { let percent = ((state.stepIdx + 1) / totalSteps) * 100; let fillBar = document.getElementById('progressFill'); if (fillBar) fillBar.style.width = `${percent}%`; let stepsDiv = document.getElementById('stepIndicator'); if (!stepsDiv) return; stepsDiv.innerHTML = ''; let stepNames = ['1. 要素设置', '2. 关系判断', '3. 计算展示', '4. 可视化与解释']; for (let i = 0; i < stepNames.length; i++) { let badge = document.createElement('div'); badge.className = 'step-badge'; if (i === state.stepIdx) badge.classList.add('active'); if (state.stepValid[i] === true && i !== state.stepIdx) badge.classList.add('completed'); else if (state.stepValid[i] !== true && i !== state.stepIdx) badge.classList.add('pending'); badge.innerText = stepNames[i]; badge.onclick = (function(idx) { return () => { if (idx <= state.stepIdx + 1 && idx >= 0) { state.stepIdx = idx; renderCurrentStep(); } } })(i); stepsDiv.appendChild(badge); } }
+    document.getElementById('saveProgressBtn').onclick = () => saveToJSON(); document.getElementById('loadProgressBtn').onclick = () => document.getElementById('loadFileInput').click(); document.getElementById('loadFileInput').onchange = (e) => { const file = e.target.files[0]; if(!file) return; const reader = new FileReader(); reader.onload = ev => { try{ loadFromJSON(JSON.parse(ev.target.result)); } catch(err){ alert("无效JSON"); } }; reader.readAsText(file); e.target.value = ''; }; document.getElementById('nextStepBtn').onclick = () => { if (state.stepIdx + 1 < totalSteps) { if (validateCurrentStep()) { state.stepIdx++; renderCurrentStep(); } else { alert("当前步骤尚未完成，请完善后继续。"); } } else { alert("已完成全部步骤"); } }; document.getElementById('prevStepBtn').onclick = () => { if(state.stepIdx>0) { state.stepIdx--; renderCurrentStep(); } };
+    initFactorsFromCount(3); recomputeStepValidAll(); renderCurrentStep();
 </script>
 </body>
 </html>
