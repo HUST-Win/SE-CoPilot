@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
     <title>QFD质量屋工具 | 质量功能展开</title>
+    <!-- 引入 SheetJS 用于 Excel 解析 -->
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
     <style>
         * {
             box-sizing: border-box;
@@ -31,6 +33,7 @@
             padding: 24px 32px;
             color: white;
             border-bottom: 3px solid #2c7da0;
+            position: relative;
         }
         .page-header h1 {
             margin: 0 0 8px 0;
@@ -46,6 +49,23 @@
             opacity: 0.85;
             font-size: 0.9rem;
             font-family: monospace;
+        }
+        /* 右上角工具栏 */
+        .global-toolbar {
+            position: absolute;
+            top: 20px;
+            right: 28px;
+            display: flex;
+            gap: 12px;
+        }
+        .global-toolbar button {
+            background: rgba(255,255,255,0.2);
+            border: 1px solid rgba(255,255,255,0.4);
+            color: white;
+            backdrop-filter: blur(4px);
+        }
+        .global-toolbar button:hover {
+            background: rgba(255,255,255,0.35);
         }
         /* 顶部进度条 */
         .progress-bar-area {
@@ -219,24 +239,78 @@
             border-top: 1px solid #e2edf2;
             padding-top: 20px;
         }
+        /* 右侧对齐特殊类 (用于第一步按钮右移) */
+        .right-align {
+            justify-content: flex-end;
+        }
+        /* 模态框样式 */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+        .modal-container {
+            background: white;
+            border-radius: 28px;
+            width: 560px;
+            max-width: 90%;
+            padding: 24px;
+            box-shadow: 0 20px 35px rgba(0,0,0,0.2);
+        }
+        .modal-container h3 {
+            margin-top: 0;
+            color: #1e3a5f;
+        }
+        .modal-container textarea {
+            width: 100%;
+            height: 240px;
+            font-family: monospace;
+            padding: 12px;
+            border-radius: 16px;
+            border: 1px solid #cbd5e1;
+            margin: 12px 0;
+        }
+        .modal-buttons {
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+        }
         @media (max-width: 760px) {
             .step-content { padding: 16px; }
             th, td { padding: 4px 6px; font-size: 0.75rem; }
             .page-header h1 { font-size: 1.3rem; }
+            .global-toolbar { position: static; margin-top: 12px; justify-content: flex-end; }
+            .page-header { padding-bottom: 16px; }
         }
         input, select {
             border-radius: 8px;
             border: 1px solid #cbdbe0;
             padding: 6px 10px;
         }
+        .info-tip {
+            font-size: 0.75rem;
+            color: #2c7da0;
+            margin-left: 8px;
+        }
     </style>
 </head>
 <body>
 <div class="qfd-container">
-    <!-- 页面标题区域 - 现在可以清晰显示 -->
     <div class="page-header">
         <h1>📐 质量功能展开 · 质量屋分析工具</h1>
         <p class="subtitle">Quality Function Deployment (QFD) | House of Quality | 用户驱动工程决策</p>
+        <!-- 右上角全局工具栏：保存进度JSON + 加载进度 -->
+        <div class="global-toolbar">
+            <button id="globalSaveJsonBtn" class="primary" style="background: rgba(255,255,255,0.2);">💾 保存进度(JSON)</button>
+            <button id="globalLoadJsonBtn" class="primary" style="background: rgba(255,255,255,0.2);">📂 加载进度</button>
+        </div>
     </div>
     
     <div class="progress-bar-area">
@@ -250,14 +324,14 @@
         <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
     </div>
     <div class="step-content" id="stepContent">
-        <!-- 步骤0 用户需求 -->
+        <!-- 步骤0 用户需求 - 修改footer按钮右对齐 -->
         <div class="step-pane" data-pane="0">
             <div class="card-panel">
                 <div class="section-title">📋 用户需求 (WHATs) & 重要性权重</div>
                 <div>需求数量: <input type="number" id="whatCount" min="3" max="15" value="4" style="width:80px;"> <button id="setWhatCountBtn" class="primary">设置</button></div>
                 <div id="whatsTableArea" style="overflow-x:auto; margin-top:16px;"></div>
             </div>
-            <div class="footer-buttons"><button class="primary next-step">下一步: 技术特性 →</button></div>
+            <div class="footer-buttons right-align"><button class="primary next-step">下一步: 技术特性</button></div>
         </div>
 
         <!-- 步骤1 技术特性 -->
@@ -270,36 +344,45 @@
             <div class="footer-buttons"><button class="prev-step">← 上一步</button><button class="primary next-step">下一步: 关系矩阵</button></div>
         </div>
 
-        <!-- 步骤2 关系矩阵 -->
+        <!-- 步骤2 关系矩阵 - 移除了批量弱中强三个按钮，保留清空、示例、粘贴、Excel导入 -->
         <div class="step-pane" data-pane="2">
             <div class="card-panel">
                 <div class="section-title">📊 关系矩阵 (WHATs vs HOWs)</div>
                 <div class="legend">● 强(9) &nbsp; ○ 中(3) &nbsp; △ 弱(1) &nbsp; 空白(0)</div>
-                <div class="btn-group"><button id="batchFillWeak">批量△弱(1)</button><button id="batchFillMed">批量○中(3)</button><button id="batchFillStrong">批量●强(9)</button><button id="batchClear">批量清空</button><button id="loadExample">📘 示例数据(手机设计)</button></div>
+                <div class="btn-group">
+                    <button id="batchClear">批量清空</button>
+                    <button id="loadExample">📘 示例数据(手机设计)</button>
+                    <button id="pasteMatrixBtn" class="primary">📋 粘贴矩阵</button>
+                    <button id="excelImportBtn" class="primary">📎 从Excel导入</button>
+                </div>
                 <div id="relationMatrixArea" style="overflow-x:auto; margin:12px 0;"></div>
             </div>
             <div class="footer-buttons"><button class="prev-step">← 上一步</button><button class="primary next-step">下一步: 屋顶矩阵</button></div>
         </div>
 
-        <!-- 步骤3 技术相关矩阵 (屋顶) -->
+        <!-- 步骤3 技术相关矩阵 (屋顶) - 新增粘贴矩阵和Excel导入按钮 -->
         <div class="step-pane" data-pane="3">
             <div class="card-panel">
                 <div class="section-title">🏠 技术相关矩阵 (屋顶) —— 正相关/负相关权衡</div>
-                <div class="legend">➕ 强正相关 &nbsp; ➖ 负相关 &nbsp; 空白=无关</div>
-                <button id="symmetryCorrFill">对称填充辅助(仅填充已选)</button>
+                <div class="legend">➕ 正相关 &nbsp; ➖ 负相关 &nbsp; 空白=无关</div>
+                <div class="btn-group">
+                    <button id="symmetryCorrFill">对称填充辅助(仅填充已选)</button>
+                    <button id="pasteCorrMatrixBtn" class="primary">📋 粘贴屋顶矩阵</button>
+                    <button id="excelCorrImportBtn" class="primary">📎 从Excel导入屋顶矩阵</button>
+                </div>
                 <div id="corrMatrixArea" style="overflow-x:auto; margin-top:16px;"></div>
             </div>
             <div class="footer-buttons"><button class="prev-step">← 上一步</button><button class="primary next-step">查看结果</button></div>
         </div>
 
-        <!-- 步骤4 结果 -->
+        <!-- 步骤4 结果 - 移除了原有的导出JSON和加载进度按钮（已移至页面右上角） -->
         <div class="step-pane" data-pane="4">
             <div class="card-panel">
                 <div class="section-title">📐 技术特性权重排序 & 优先级建议</div>
                 <div id="resultsArea"></div>
-                <div class="btn-group"><button id="exportJSONBtn">💾 导出质量屋为JSON</button><button id="exportCSVBtn">📎 下载CSV报告</button><button id="loadProgressBtn">📂 加载进度JSON</button></div>
+                <div class="btn-group"><button id="exportCSVBtn">📎 下载CSV报告</button></div>
             </div>
-            <div class="footer-buttons"><button class="prev-step">← 上一步</button><button class="primary" id="recalcAndStay">重新计算</button></div>
+            <div class="footer-buttons"><button class="prev-step">← 上一步</button></div>
         </div>
     </div>
 </div>
@@ -316,65 +399,123 @@
     const stepPanes = document.querySelectorAll('.step-pane');
     const stepTabs = document.querySelectorAll('.step-tab');
 
-    // 辅助函数: 更新矩阵维度
+    // 辅助: 同步矩阵维度 (确保relation和correlation维度匹配最新的whats/hows数量)
     function syncDimensions() {
         let n = state.whats.length;
         let m = state.hows.length;
-        if (!state.relation.length || state.relation.length !== n) {
+        
+        // 重新构建relation矩阵 (保留原有数据，但调整行列)
+        if (!state.relation || state.relation.length !== n) {
             let newRel = Array(n).fill().map(() => Array(m).fill(0));
-            for(let i=0; i<Math.min(state.relation.length, n); i++)
-                for(let j=0; j<Math.min(state.relation[i]?.length, m); j++) newRel[i][j] = state.relation[i][j];
+            for(let i=0; i<Math.min(state.relation?.length, n); i++) {
+                for(let j=0; j<Math.min(state.relation[i]?.length, m); j++) {
+                    newRel[i][j] = state.relation[i][j];
+                }
+            }
             state.relation = newRel;
         } else {
-            state.relation.forEach(row => { while(row.length < m) row.push(0); if(row.length > m) row.length = m; });
+            // 行数匹配，但列数可能变化
+            for(let i=0; i<n; i++) {
+                if(!state.relation[i]) state.relation[i] = [];
+                while(state.relation[i].length < m) state.relation[i].push(0);
+                if(state.relation[i].length > m) state.relation[i].length = m;
+            }
         }
-        if (!state.correlation.length || state.correlation.length !== m) {
+        
+        // 重新构建correlation矩阵 (m x m)
+        if (!state.correlation || state.correlation.length !== m) {
             let newCorr = Array(m).fill().map(() => Array(m).fill(''));
-            for(let i=0; i<Math.min(state.correlation.length, m); i++)
-                for(let j=0; j<Math.min(state.correlation[i]?.length, m); j++) newCorr[i][j] = state.correlation[i][j];
+            for(let i=0; i<Math.min(state.correlation?.length, m); i++) {
+                for(let j=0; j<Math.min(state.correlation[i]?.length, m); j++) {
+                    if(i !== j) newCorr[i][j] = state.correlation[i][j];
+                }
+            }
             state.correlation = newCorr;
-            for(let i=0;i<m;i++) if(state.correlation[i][i] !== undefined) state.correlation[i][i] = '';
         } else {
-            state.correlation.forEach(row => { while(row.length < m) row.push(''); if(row.length > m) row.length = m; });
+            for(let i=0; i<m; i++) {
+                if(!state.correlation[i]) state.correlation[i] = Array(m).fill('');
+                while(state.correlation[i].length < m) state.correlation[i].push('');
+                if(state.correlation[i].length > m) state.correlation[i].length = m;
+                if(state.correlation[i][i] !== undefined) state.correlation[i][i] = '';
+            }
         }
     }
 
-    // 渲染各个UI
+    // 核心渲染：确保每次名称变更后所有表格完全刷新 (使用最新state数据)
     function renderWhats() {
-        let html = '<table><thead><tr><th>#</th><th>用户需求名称</th><th>重要性权重 (1~5)</th></tr></thead><tbody>';
+        let html = '<table style="border-collapse: collapse; width: 100%;">';
+        html += '<thead><tr><th>#</th><th>用户需求名称</th><th>重要性权重 (1~5)</th></tr></thead><tbody>';
         state.whats.forEach((w, idx) => {
-            html += `<tr><td>${idx+1}</td><td><input type="text" class="what-name" data-idx="${idx}" value="${escapeHtml(w.name)}" style="width:150px;"></td>
-                      <td><input type="number" step="any" class="what-weight" data-idx="${idx}" value="${w.weight}" style="width:90px;"></td></tr>`;
+            html += `<tr>
+                        <td>${idx+1}</td>
+                        <td><input type="text" class="what-name" data-idx="${idx}" value="${escapeHtml(w.name)}" style="width:100%; padding:6px;"></td>
+                        <td><input type="number" step="any" class="what-weight" data-idx="${idx}" value="${w.weight}" style="width:80px; padding:6px;"></td>
+                     </tr>`;
         });
         html += '</tbody></table>';
         document.getElementById('whatsTableArea').innerHTML = html;
-        attachWhatsEvents();
+        
+        // 绑定事件 (修改后需要重新同步矩阵 & 自动刷新关系矩阵/屋顶矩阵的表头)
+        document.querySelectorAll('.what-name').forEach(inp => inp.addEventListener('change', (e) => {
+            let idx = parseInt(e.target.dataset.idx);
+            state.whats[idx].name = e.target.value;
+            // 用户需求名称变更，需要刷新关系矩阵（表头），但保留原有数值
+            renderRelation();
+        }));
+        document.querySelectorAll('.what-weight').forEach(inp => inp.addEventListener('change', (e) => {
+            let idx = parseInt(e.target.dataset.idx);
+            let v = parseFloat(e.target.value);
+            if(!isNaN(v)) state.whats[idx].weight = v;
+            // 如果当前步骤在结果页，则需要实时刷新结果
+            if(currentStep === 4) renderResults();
+        }));
     }
-    function attachWhatsEvents() {
-        document.querySelectorAll('.what-name').forEach(inp => inp.addEventListener('change', (e) => { let idx = e.target.dataset.idx; state.whats[idx].name = e.target.value; }));
-        document.querySelectorAll('.what-weight').forEach(inp => inp.addEventListener('change', (e) => { let idx = e.target.dataset.idx; let v = parseFloat(e.target.value); if(!isNaN(v)) state.whats[idx].weight = v; }));
-    }
+    
     function renderHows() {
         let html = '<table><thead><tr><th>#</th><th>技术特性名称</th><th>优化方向</th></tr></thead><tbody>';
         state.hows.forEach((h, idx) => {
-            html += `<tr><td>${idx+1}</td><td><input type="text" class="how-name" data-idx="${idx}" value="${escapeHtml(h.name)}" style="width:150px;"></td>
-                      <td><select class="how-dir" data-idx="${idx}"><option ${h.direction === '↑'?'selected':''} value="↑">↑ 越大越好</option><option ${h.direction === '↓'?'selected':''} value="↓">↓ 越小越好</option><option ${h.direction === '○'?'selected':''} value="○">○ 标称值</option></select></td></tr>`;
+            html += `<tr>
+                        <td>${idx+1}</td>
+                        <td><input type="text" class="how-name" data-idx="${idx}" value="${escapeHtml(h.name)}" style="width:150px;"></td>
+                        <td><select class="how-dir" data-idx="${idx}"><option ${h.direction === '↑'?'selected':''} value="↑">↑ 越大越好</option><option ${h.direction === '↓'?'selected':''} value="↓">↓ 越小越好</option><option ${h.direction === '○'?'selected':''} value="○">○ 标称值</option></select></td>
+                     </tr>`;
         });
-        html += '</tbody></table>';
+        html += '</tbody><table>';
         document.getElementById('howsTableArea').innerHTML = html;
-        document.querySelectorAll('.how-name').forEach(inp => inp.addEventListener('change', (e) => { let idx = e.target.dataset.idx; state.hows[idx].name = e.target.value; }));
-        document.querySelectorAll('.how-dir').forEach(sel => sel.addEventListener('change', (e) => { let idx = e.target.dataset.idx; state.hows[idx].direction = e.target.value; }));
+        
+        document.querySelectorAll('.how-name').forEach(inp => inp.addEventListener('change', (e) => {
+            let idx = parseInt(e.target.dataset.idx);
+            state.hows[idx].name = e.target.value;
+            // 技术特性名称变更，需要刷新关系矩阵、屋顶矩阵的列和行表头
+            renderRelation();
+            renderCorrelation();
+            if(currentStep === 4) renderResults();
+        }));
+        document.querySelectorAll('.how-dir').forEach(sel => sel.addEventListener('change', (e) => {
+            let idx = parseInt(e.target.dataset.idx);
+            state.hows[idx].direction = e.target.value;
+            if(currentStep === 4) renderResults();
+        }));
     }
+    
+    // 关系矩阵渲染: 动态读取最新的whats和hows作为表头，展示当前state.relation的值
     function renderRelation() {
         let n = state.whats.length, m = state.hows.length;
-        if(!n || !m) return;
+        if(n === 0 || m === 0) {
+            document.getElementById('relationMatrixArea').innerHTML = '<div class="card-panel" style="text-align:center;">请先设置用户需求和技术特性</div>';
+            return;
+        }
+        // 确保relation维度正确 (防止外部修改未同步)
+        if(state.relation.length !== n || (state.relation[0] && state.relation[0].length !== m)) {
+            syncDimensions();
+        }
         let html = '<table><thead><tr><th>用户需求\\技术特性</th>';
-        for(let j=0;j<m;j++) html += `<th>${escapeHtml(state.hows[j]?.name || `T${j+1}`)}</th>`;
+        for(let j=0; j<m; j++) html += `<th>${escapeHtml(state.hows[j]?.name || `T${j+1}`)}</th>`;
         html += '</tr></thead><tbody>';
-        for(let i=0;i<n;i++) {
-            html += `<tr><td style="background:#fafcff; font-weight:500;">${escapeHtml(state.whats[i]?.name)}</td>`;
-            for(let j=0;j<m;j++) {
-                let val = state.relation[i]?.[j] || 0;
+        for(let i=0; i<n; i++) {
+            html += `<tr><td style="background:#fafcff; font-weight:500;">${escapeHtml(state.whats[i]?.name || `需求${i+1}`)}</td>`;
+            for(let j=0; j<m; j++) {
+                let val = (state.relation[i] && state.relation[i][j] !== undefined) ? state.relation[i][j] : 0;
                 html += `<td><select class="rel-select" data-i="${i}" data-j="${j}">
                             <option value="0" ${val===0?'selected':''}>空白(0)</option>
                             <option value="1" ${val===1?'selected':''}>△弱(1)</option>
@@ -384,165 +525,355 @@
             }
             html += '</tr>';
         }
-        html += '</tbody></table>';
+        html += '</tbody><table>';
         document.getElementById('relationMatrixArea').innerHTML = html;
+        
+        // 绑定下拉变更事件
         document.querySelectorAll('.rel-select').forEach(sel => {
             sel.addEventListener('change', (e) => {
                 let i = parseInt(sel.dataset.i), j = parseInt(sel.dataset.j);
-                state.relation[i][j] = parseInt(sel.value);
+                if(state.relation[i] && state.relation[i][j] !== undefined) {
+                    state.relation[i][j] = parseInt(sel.value);
+                }
+                if(currentStep === 4) renderResults();  // 实时更新结果权重
             });
         });
     }
+    
+    // 屋顶相关矩阵渲染 (技术特性间的相关性)
     function renderCorrelation() {
         let m = state.hows.length;
-        if(m===0) return;
-        let html = '<table><thead><tr><th>技术相关</th>';
-        for(let j=0;j<m;j++) html += `<th>${escapeHtml(state.hows[j]?.name || `T${j+1}`)}</th>`;
-        html += '</tr></thead><tbody>';
-        for(let i=0;i<m;i++) {
-            html += `<tr><td style="background:#f4f7fb;">${escapeHtml(state.hows[i]?.name)}</td>`;
-            for(let j=0;j<m;j++) {
-                if(i===j) { html += `<td>—</td>`; continue; }
-                let val = state.correlation[i]?.[j] || '';
+        if(m === 0) {
+            document.getElementById('corrMatrixArea').innerHTML = '<div class="card-panel" style="text-align:center;">请先设置技术特性</div>';
+            return;
+        }
+        if(state.correlation.length !== m) syncDimensions();
+        let html = '<table style="min-width: 300px;">';
+        html += '<thead>';
+        html += '<tr>';
+        html += '<th style="background:#eef3fc;">技术相关</th>';
+        for(let j=0; j<m; j++) {
+            html += `<th style="background:#eef3fc;">${escapeHtml(state.hows[j]?.name || `T${j+1}`)}</th>`;
+        }
+        html += '</tr>';
+        html += '</thead>';
+        html += '<tbody>';
+        for(let i=0; i<m; i++) {
+            html += '<tr>';
+            html += `<td style="background:#f4f7fb; font-weight:500;">${escapeHtml(state.hows[i]?.name)}</td>`;
+            for(let j=0; j<m; j++) {
+                if(i === j) {
+                    html += '<td style="background:#f9fafb; color:#94a3b8;">—</td>';
+                    continue;
+                }
+                let val = (state.correlation[i] && state.correlation[i][j]) ? state.correlation[i][j] : '';
                 let selectedPlus = (val === '+') ? 'selected' : '';
                 let selectedMinus = (val === '-') ? 'selected' : '';
-                html += `<td><select class="corr-select" data-i="${i}" data-j="${j}">
-                            <option value="">空白(无关)</option>
-                            <option value="+" ${selectedPlus}>➕ 正相关</option>
-                            <option value="-" ${selectedMinus}>➖ 负相关</option>
-                         </select></td>`;
+                html += `<td>
+                            <select class="corr-select" data-i="${i}" data-j="${j}" style="min-width:100px; padding:6px 8px;">
+                                <option value="">空白(无关)</option>
+                                <option value="+" ${selectedPlus}>➕ 正相关</option>
+                                <option value="-" ${selectedMinus}>➖ 负相关</option>
+                            </select>
+                        </td>`;
             }
             html += '</tr>';
         }
-        html += '</tbody></table>';
+        html += '</tbody>';
+        html += '</table>';
         document.getElementById('corrMatrixArea').innerHTML = html;
+        
         document.querySelectorAll('.corr-select').forEach(sel => {
             sel.addEventListener('change', (e) => {
                 let i = parseInt(sel.dataset.i), j = parseInt(sel.dataset.j);
-                state.correlation[i][j] = sel.value;
+                if(state.correlation[i] && state.correlation[i][j] !== undefined) {
+                    state.correlation[i][j] = sel.value;
+                    if(currentStep === 4) renderResults();
+                }
             });
         });
     }
-    function symmetryCorr() {
-        let m = state.hows.length;
-        for(let i=0;i<m;i++) {
-            for(let j=i+1;j<m;j++) {
-                if(state.correlation[i][j] !== '') {
-                    state.correlation[j][i] = state.correlation[i][j];
-                } else if(state.correlation[j][i] !== '') {
-                    state.correlation[i][j] = state.correlation[j][i];
+
+    
+    // 解析文本矩阵 (0/1/3/9)
+    function parseMatrixTextToRelations(text, targetRows, targetCols) {
+        let lines = text.split(/\r?\n/).filter(l => l.trim().length > 0);
+        let parsedRows = [];
+        for(let line of lines) {
+            let tokens = [];
+            if(line.includes('\t')) tokens = line.split(/\t+/);
+            else if(line.includes(',')) tokens = line.split(/[,]+/);
+            else tokens = line.trim().split(/\s+/);
+            let rowNums = tokens.map(t => {
+                let num = parseFloat(t);
+                if(isNaN(num)) return 0;
+                if(num === 1) return 1;
+                if(num === 3) return 3;
+                if(num === 9) return 9;
+                if(num > 0) return 9;
+                return 0;
+            });
+            if(rowNums.length > 0) parsedRows.push(rowNums);
+        }
+        if(parsedRows.length === 0) return null;
+        let newRel = Array(targetRows).fill().map(() => Array(targetCols).fill(0));
+        for(let i=0; i<Math.min(parsedRows.length, targetRows); i++) {
+            for(let j=0; j<Math.min(parsedRows[i].length, targetCols); j++) {
+                newRel[i][j] = parsedRows[i][j];
+            }
+        }
+        return newRel;
+    }
+    
+    function parseCorrelationMatrixText(text, targetSize) {
+        let lines = text.split(/\r?\n/).filter(l => l.trim().length > 0);
+        let parsedRows = [];
+        for(let line of lines) {
+            let tokens = [];
+            if(line.includes('\t')) tokens = line.split(/\t+/);
+            else if(line.includes(',')) tokens = line.split(/[,]+/);
+            else tokens = line.trim().split(/\s+/);
+            let rowSymbols = tokens.map(t => {
+                let v = t.trim();
+                if(v === '+' || v === '1' || v === '正') return '+';
+                if(v === '-' || v === '-1' || v === '负') return '-';
+                return '';
+            });
+            if(rowSymbols.length > 0) parsedRows.push(rowSymbols);
+        }
+        if(parsedRows.length === 0) return null;
+        let newCorr = Array(targetSize).fill().map(() => Array(targetSize).fill(''));
+        for(let i=0; i<Math.min(parsedRows.length, targetSize); i++) {
+            for(let j=0; j<Math.min(parsedRows[i].length, targetSize); j++) {
+                if(i !== j) newCorr[i][j] = parsedRows[i][j];
+            }
+        }
+        return newCorr;
+    }
+    
+    function importExcelToRelation(file, rows, cols, callback) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, { type: 'array' });
+            const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+            const json = XLSX.utils.sheet_to_json(firstSheet, { header: 1, defval: 0 });
+            if(!json || json.length === 0) { alert("Excel无数据"); return; }
+            let newRel = Array(rows).fill().map(() => Array(cols).fill(0));
+            for(let i=0; i<Math.min(json.length, rows); i++) {
+                const rowData = json[i];
+                if(!rowData) continue;
+                for(let j=0; j<Math.min(rowData.length, cols); j++) {
+                    let val = rowData[j];
+                    let num = parseFloat(val);
+                    if(isNaN(num)) num = 0;
+                    if(num === 1) newRel[i][j] = 1;
+                    else if(num === 3) newRel[i][j] = 3;
+                    else if(num === 9) newRel[i][j] = 9;
+                    else if(num > 0) newRel[i][j] = 9;
+                    else newRel[i][j] = 0;
                 }
             }
-        }
-        renderCorrelation();
+            state.relation = newRel;
+            renderRelation();
+            alert(`成功从Excel导入关系矩阵`);
+            callback && callback();
+        };
+        reader.readAsArrayBuffer(file);
     }
-
-    // 计算权重
-    function computeWeights() {
-        let n = state.whats.length, m = state.hows.length;
-        let absWeight = new Array(m).fill(0);
-        for(let j=0;j<m;j++) {
-            let sum = 0;
-            for(let i=0;i<n;i++) {
-                let w = parseFloat(state.whats[i].weight) || 0;
-                let rel = state.relation[i]?.[j] || 0;
-                sum += w * rel;
+    
+    function importExcelToCorrelation(file, size, callback) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, { type: 'array' });
+            const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+            const json = XLSX.utils.sheet_to_json(firstSheet, { header: 1, defval: "" });
+            if(!json || json.length === 0) { alert("Excel无数据"); return; }
+            let newCorr = Array(size).fill().map(() => Array(size).fill(''));
+            for(let i=0; i<Math.min(json.length, size); i++) {
+                const rowData = json[i];
+                if(!rowData) continue;
+                for(let j=0; j<Math.min(rowData.length, size); j++) {
+                    if(i === j) continue;
+                    let cell = (rowData[j] || "").toString().trim();
+                    if(cell === '+' || cell === '1' || cell === '正') newCorr[i][j] = '+';
+                    else if(cell === '-' || cell === '-1' || cell === '负') newCorr[i][j] = '-';
+                    else newCorr[i][j] = '';
+                }
             }
-            absWeight[j] = sum;
-        }
-        let total = absWeight.reduce((a,b)=>a+b,0);
-        let relWeight = total===0 ? absWeight.map(()=>0) : absWeight.map(v=> (v/total)*100);
-        return {absWeight, relWeight, total};
+            state.correlation = newCorr;
+            renderCorrelation();
+            alert(`成功从Excel导入屋顶矩阵`);
+            callback && callback();
+        };
+        reader.readAsArrayBuffer(file);
     }
-
-    function renderResults() {
-        let {absWeight, relWeight, total} = computeWeights();
-        let m = state.hows.length;
-        let items = [];
-        for(let j=0;j<m;j++) items.push({name: state.hows[j].name, abs: absWeight[j], rel: relWeight[j], idx:j});
-        items.sort((a,b)=>b.rel - a.rel);
-        let top = items[0];
-        let html = `<div style="margin-bottom:20px;"><strong>技术特性绝对权重 & 相对权重排序</strong> (基于用户需求权重与关系矩阵)<br>`;
-        for(let it of items) {
-            html += `<div class="priority-item"><span style="display:inline-block; width:180px;">${escapeHtml(it.name)}</span> 
-                    ${it.rel.toFixed(2)}%  &nbsp; (绝对权重=${it.abs.toFixed(2)}) 
-                    <div class="bar-chart"><div class="bar-fill" style="width: ${it.rel}%;">${it.rel>8? it.rel.toFixed(1)+'%':''}</div></div></div>`;
+    
+    // 模态框方法保持不变，但确保使用最新的state维度
+    function showPasteModal() { /* 与原来一致，但内部调用parse时基于当前state */ 
+        const modalDiv = document.createElement('div');
+        modalDiv.className = 'modal-overlay';
+        modalDiv.innerHTML = `
+            <div class="modal-container">
+                <h3>📋 粘贴关系矩阵</h3>
+                <p style="font-size:0.8rem;">请输入 ${state.whats.length} 行 × ${state.hows.length} 列的矩阵数值</p>
+                <textarea id="matrixRawInput" placeholder="示例:&#10;9 3 1 0&#10;0 9 0 3"></textarea>
+                <div class="modal-buttons"><button id="modalCancelBtn">取消</button><button id="modalConfirmBtn" class="primary">确认填充</button></div>
+            </div>
+        `;
+        document.body.appendChild(modalDiv);
+        const closeModal = () => modalDiv.remove();
+        document.getElementById('modalCancelBtn').addEventListener('click', closeModal);
+        document.getElementById('modalConfirmBtn').addEventListener('click', () => {
+            const raw = document.getElementById('matrixRawInput').value;
+            if(!raw.trim()) { alert("请输入矩阵内容"); return; }
+            const newRel = parseMatrixTextToRelations(raw, state.whats.length, state.hows.length);
+            if(newRel) {
+                state.relation = newRel;
+                renderRelation();
+                alert("矩阵填充成功！");
+                closeModal();
+            } else alert("解析失败");
+        });
+    }
+    function showCorrPasteModal() { /* 类似处理 */
+        const modalDiv = document.createElement('div');
+        modalDiv.className = 'modal-overlay';
+        modalDiv.innerHTML = `<div class="modal-container"><h3>🏠 粘贴屋顶相关矩阵</h3><p>请输入 ${state.hows.length} × ${state.hows.length} 矩阵</p><textarea id="corrMatrixRawInput"></textarea><div class="modal-buttons"><button id="modalCancelBtn">取消</button><button id="modalConfirmBtn" class="primary">确认填充</button></div></div>`;
+        document.body.appendChild(modalDiv);
+        const closeModal = () => modalDiv.remove();
+        document.getElementById('modalCancelBtn').addEventListener('click', closeModal);
+        document.getElementById('modalConfirmBtn').addEventListener('click', () => {
+            const raw = document.getElementById('corrMatrixRawInput').value;
+            const newCorr = parseCorrelationMatrixText(raw, state.hows.length);
+            if(newCorr) { state.correlation = newCorr; renderCorrelation(); alert("填充成功"); closeModal(); } else alert("解析失败");
+        });
+    }
+    
+    function symmetryCorr() { let m=state.hows.length; for(let i=0;i<m;i++) for(let j=i+1;j<m;j++) { if(state.correlation[i][j] !== '') state.correlation[j][i] = state.correlation[i][j]; else if(state.correlation[j][i] !== '') state.correlation[i][j] = state.correlation[j][i]; } renderCorrelation(); }
+    
+    function computeWeights() { let n=state.whats.length,m=state.hows.length,absWeight=new Array(m).fill(0); for(let j=0;j<m;j++) { let sum=0; for(let i=0;i<n;i++) { let w=parseFloat(state.whats[i].weight)||0; let rel=state.relation[i]?.[j]||0; sum+=w*rel; } absWeight[j]=sum; } let total=absWeight.reduce((a,b)=>a+b,0); let relWeight=total===0?absWeight.map(()=>0):absWeight.map(v=>(v/total)*100); return {absWeight,relWeight,total}; }
+    
+ 
+    function renderResults() { 
+        let {absWeight, relWeight, total} = computeWeights(); 
+        let items = state.hows.map((h,i)=>({name:h.name, abs:absWeight[i], rel:relWeight[i], idx:i})).sort((a,b)=>b.rel-a.rel); 
+        let top = items[0]; 
+        
+        // 构建计算过程展示HTML
+        let calculationHtml = `
+            <div class="card-panel" style="margin-top: 20px;">
+                <div class="section-title" style="font-size: 1.1rem;">📝 权重计算过程</div>
+                <div style="font-size: 0.85rem; line-height: 1.6; overflow-x: auto;">
+                    <table style="min-width: 500px;">
+                        <thead>
+                            <tr>
+                                <th>技术特性</th>
+                                <th>计算公式</th>
+                                <th>绝对权重</th>
+                                <th>相对权重</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+        `;
+        
+        for(let j = 0; j < state.hows.length; j++) {
+            let howName = state.hows[j].name;
+            let formulaTerms = [];
+            for(let i = 0; i < state.whats.length; i++) {
+                let weight = state.whats[i].weight;
+                let rel = state.relation[i]?.[j] || 0;
+                if(rel !== 0) {
+                    formulaTerms.push(`${weight} × ${rel}`);
+                }
+            }
+            let formula = formulaTerms.length > 0 ? formulaTerms.join(' + ') : '0';
+            if(formulaTerms.length > 1) formula = `(${formula})`;
+            
+            calculationHtml += `
+                <tr>
+                    <td style="text-align:left;">${escapeHtml(howName)}</td>
+                    <td style="text-align:left; font-family: monospace;">${formula}</td>
+                    <td>${absWeight[j].toFixed(2)}</td>
+                    <td>${relWeight[j].toFixed(2)}%</td>
+                </tr>
+            `;
         }
-        html += `</div><div class="card-panel"><strong>📌 设计优先级建议</strong><br>`;
-        if(top) html += `最高优先级技术特性为 <strong>“${escapeHtml(top.name)}”</strong>，权重占比 <strong>${top.rel.toFixed(1)}%</strong>。建议资源投入占比不低于 ${Math.min(95, Math.ceil(top.rel+5))}%。<br>`;
+        
+        calculationHtml += `
+                        </tbody>
+                    </table>
+                    <div style="margin-top: 12px; padding: 8px; background: #f8fafc; border-radius: 12px;">
+                        <strong>总权重值:</strong> ${total.toFixed(2)}<br>
+                        <strong>计算方法:</strong> 每个技术特性的绝对权重 = Σ(用户需求重要性 × 关系矩阵值)<br>
+                        <strong>相对权重:</strong> (绝对权重 / 总权重) × 100%
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        // 原有的结果展示
+        let html = `<div><strong>技术特性权重排序</strong><br>`; 
+        items.forEach(it=>{
+            html+=`<div class="priority-item"><span style="width:180px;display:inline-block;">${escapeHtml(it.name)}</span> ${it.rel.toFixed(2)}% (绝对权重=${it.abs.toFixed(2)})<div class="bar-chart"><div class="bar-fill" style="width:${it.rel}%;">${it.rel>8? it.rel.toFixed(1)+'%':''}</div></div></div>`;
+        }); 
+        html+=`</div><div class="card-panel"><strong>📌 优先级建议</strong><br>最高优先级: ${top? escapeHtml(top.name):''} (${top? top.rel.toFixed(1):0}%)。`;
+        
+        // 添加屋顶矩阵中的负相关警告
         let negMsgs = [];
-        for(let i=0;i<m;i++) {
-            for(let j=0;j<m;j++) {
+        for(let i=0; i<state.hows.length; i++) {
+            for(let j=0; j<state.hows.length; j++) {
                 if(state.correlation[i]?.[j] === '-') {
                     negMsgs.push(`“${state.hows[i].name}”与“${state.hows[j].name}”存在负相关`);
                 }
             }
         }
-        if(negMsgs.length>0) {
-            html += `<span style="color:#b13e3e;">⚠️ 注意：${[...new Set(negMsgs)].slice(0,3).join('；')}，需权衡优化。</span><br>`;
+        if(negMsgs.length > 0) {
+            html += `<br><span style="color:#b13e3e;">⚠️ 注意：${[...new Set(negMsgs)].slice(0,3).join('；')}，需权衡优化。</span>`;
         }
-        let nl = `基于用户需求权重分析，技术特性【${top.name}】获得最高权重${top.rel.toFixed(1)}%，其次是${items[1]? items[1].name:''}（${items[1]? items[1].rel.toFixed(1):0}%）。这意味着团队应优先投入资源解决${top.name}相关的设计问题。`;
-        html += `<div style="margin-top:12px; background:#f1f6fa; padding:12px; border-radius:16px;">💡 ${nl}</div>`;
-        document.getElementById('resultsArea').innerHTML = html;
+        html += `</div>`;
+        
+        // 合并结果和计算过程
+        document.getElementById('resultsArea').innerHTML = html + calculationHtml;
     }
 
-
-    function loadExampleData() {
-        state.whats = [{ name: "电池续航", weight: 5 }, { name: "运行流畅度", weight: 5 }, { name: "拍照效果", weight: 4 }, { name: "屏幕显示", weight: 4 }];
-        state.hows = [{ name: "电池容量", direction: "↑" }, { name: "处理器性能", direction: "↑" }, { name: "摄像头像素", direction: "↑" }, { name: "屏幕分辨率", direction: "↑" }];
-        syncDimensions();
-        for(let i=0;i<4;i++) for(let j=0;j<4;j++) state.relation[i][j]=0;
-        state.relation[0][0]=9; state.relation[1][1]=9; state.relation[2][2]=9; state.relation[3][3]=9;
-        state.relation[1][0]=3; state.relation[0][1]=3; state.relation[3][1]=1;
-        state.correlation = Array(4).fill().map(()=>Array(4).fill(''));
-        state.correlation[0][1] = '+'; state.correlation[1][0] = '+';
-        state.correlation[1][2] = '-'; state.correlation[2][1] = '-';
-        renderWhats(); renderHows(); renderRelation(); renderCorrelation();
-        alert("已加载手机设计示例数据，请继续查看结果。");
-    }
-
+    
+    function loadExampleData() { state.whats = [{ name: "电池续航", weight: 5 }, { name: "运行流畅度", weight: 5 }, { name: "拍照效果", weight: 4 }, { name: "屏幕显示", weight: 4 }]; state.hows = [{ name: "电池容量", direction: "↑" }, { name: "处理器性能", direction: "↑" }, { name: "摄像头像素", direction: "↑" }, { name: "屏幕分辨率", direction: "↑" }]; syncDimensions(); for(let i=0;i<4;i++) for(let j=0;j<4;j++) state.relation[i][j]=0; state.relation[0][0]=9; state.relation[1][1]=9; state.relation[2][2]=9; state.relation[3][3]=9; state.relation[1][0]=3; state.relation[0][1]=3; state.relation[3][1]=1; state.correlation = Array(4).fill().map(()=>Array(4).fill('')); state.correlation[0][1]='+';state.correlation[1][0]='+';state.correlation[1][2]='-';state.correlation[2][1]='-'; renderWhats(); renderHows(); renderRelation(); renderCorrelation(); alert("已加载示例数据"); }
+    
     function exportToJson() { return JSON.stringify({whats: state.whats, hows: state.hows, relation: state.relation, correlation: state.correlation}, null, 2); }
     function downloadJson() { let blob = new Blob([exportToJson()], {type:"application/json"}); let a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download="qfd_house.json"; a.click(); }
-    function downloadCSV() {
-        let {absWeight, relWeight} = computeWeights();
-        let rows = [["技术特性","绝对权重","相对权重(%)","优化方向"]];
-        state.hows.forEach((h,i)=> rows.push([h.name, absWeight[i].toFixed(2), relWeight[i].toFixed(2), h.direction]));
-        let csv = rows.map(r=>r.join(",")).join("\n");
-        let blob = new Blob([csv], {type:"text/csv"}); let a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download="qfd_weights.csv"; a.click();
-    }
-    function loadProgress(file) { let reader=new FileReader(); reader.onload=e=>{ let d=JSON.parse(e.target.result); state.whats=d.whats || state.whats; state.hows=d.hows || state.hows; state.relation=d.relation || []; state.correlation=d.correlation || []; syncDimensions(); renderAllDynamic(); alert("加载成功"); }; reader.readAsText(file); }
-
+    function downloadCSV() { let {absWeight,relWeight}=computeWeights(); let rows=[["技术特性","绝对权重","相对权重(%)","方向"]]; state.hows.forEach((h,i)=>rows.push([h.name,absWeight[i].toFixed(2),relWeight[i].toFixed(2),h.direction])); let csv=rows.map(r=>r.join(",")).join("\n"); let blob=new Blob([csv],{type:"text/csv"}); let a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download="qfd_weights.csv"; a.click(); }
+    function loadProgress(file) { let reader=new FileReader(); reader.onload=e=>{ let d=JSON.parse(e.target.result); state.whats=d.whats||state.whats; state.hows=d.hows||state.hows; state.relation=d.relation||[]; state.correlation=d.correlation||[]; syncDimensions(); renderWhats(); renderHows(); renderRelation(); renderCorrelation(); alert("加载成功"); }; reader.readAsText(file); }
+    
     function renderAllDynamic() { renderWhats(); renderHows(); renderRelation(); renderCorrelation(); if(currentStep===4) renderResults(); }
-    function validateStep(step) {
-        if(step===0) return state.whats.length>0 && state.whats.every(w=>w.name.trim() !== "" && !isNaN(w.weight) && w.weight>0);
-        if(step===1) return state.hows.length>0 && state.hows.every(h=>h.name.trim()!=="");
-        return true;
-    }
-    function nextStep() { if(currentStep<4 && validateStep(currentStep)) { currentStep++; updateStepUI(); } else if(currentStep===4) renderResults(); else alert("请完整填写当前步骤必要信息(需求名称非空、权重有效)。"); }
+    function validateStep(step) { if(step===0) return state.whats.length>0 && state.whats.every(w=>w.name.trim()!=="" && !isNaN(w.weight)&&w.weight>0); if(step===1) return state.hows.length>0 && state.hows.every(h=>h.name.trim()!==""); return true; }
+    function nextStep() { if(currentStep<4 && validateStep(currentStep)) { currentStep++; updateStepUI(); } else if(currentStep===4) renderResults(); else alert("请完整填写当前步骤必要信息"); }
     function prevStep() { if(currentStep>0) { currentStep--; updateStepUI(); } }
-    function updateStepUI() {
-        stepPanes.forEach((pane,i)=> { pane.classList.toggle('active-pane', i===currentStep); });
-        stepTabs.forEach((tab,i)=>{ tab.classList.toggle('active', i===currentStep); if(validateStep(i)) tab.classList.add('completed'); else tab.classList.remove('completed'); });
-        let progress=((currentStep+1)/5)*100; document.getElementById('progressFill').style.width=progress+'%';
-        if(currentStep===4) renderResults();
-    }
+    function updateStepUI() { stepPanes.forEach((pane,i)=> pane.classList.toggle('active-pane', i===currentStep)); stepTabs.forEach((tab,i)=>{ tab.classList.toggle('active', i===currentStep); if(validateStep(i)) tab.classList.add('completed'); else tab.classList.remove('completed'); }); document.getElementById('progressFill').style.width=((currentStep+1)/5)*100+'%'; if(currentStep===4) renderResults(); }
+    
     function bindEvents() {
         document.querySelectorAll('.next-step').forEach(btn=>btn.addEventListener('click',nextStep));
         document.querySelectorAll('.prev-step').forEach(btn=>btn.addEventListener('click',prevStep));
-        stepTabs.forEach((tab,i)=>tab.addEventListener('click',()=>{ if(validateStep(i)) { currentStep=i; updateStepUI(); } else alert("请先完成前置步骤必需项"); }));
-        document.getElementById('setWhatCountBtn').addEventListener('click',()=>{ let n=parseInt(document.getElementById('whatCount').value); if(n>=3 && n<=15){ while(state.whats.length<n) state.whats.push({name:`需求${state.whats.length+1}`, weight:3}); while(state.whats.length>n) state.whats.pop(); syncDimensions(); renderWhats(); } });
-        document.getElementById('setHowCountBtn').addEventListener('click',()=>{ let m=parseInt(document.getElementById('howCount').value); if(m>=3 && m<=12){ while(state.hows.length<m) state.hows.push({name:`技术${state.hows.length+1}`, direction:"↑"}); while(state.hows.length>m) state.hows.pop(); syncDimensions(); renderHows(); renderCorrelation(); } });
+        stepTabs.forEach((tab,i)=>tab.addEventListener('click',()=>{ if(validateStep(i)) { currentStep=i; updateStepUI(); } else alert("请先完成前置步骤"); }));
+        document.getElementById('setWhatCountBtn').addEventListener('click',()=>{ let n=parseInt(document.getElementById('whatCount').value); if(n>=3&&n<=15){ while(state.whats.length<n) state.whats.push({name:`需求${state.whats.length+1}`,weight:3}); while(state.whats.length>n) state.whats.pop(); syncDimensions(); renderWhats(); renderRelation(); } });
+        document.getElementById('setHowCountBtn').addEventListener('click',()=>{ let m=parseInt(document.getElementById('howCount').value); if(m>=3&&m<=12){ while(state.hows.length<m) state.hows.push({name:`技术${state.hows.length+1}`,direction:"↑"}); while(state.hows.length>m) state.hows.pop(); syncDimensions(); renderHows(); renderRelation(); renderCorrelation(); } });
         document.getElementById('batchClear').addEventListener('click',()=>{ for(let i=0;i<state.relation.length;i++) for(let j=0;j<state.hows.length;j++) state.relation[i][j]=0; renderRelation(); });
-        document.getElementById('batchFillWeak').addEventListener('click',()=>{ for(let i=0;i<state.relation.length;i++) for(let j=0;j<state.hows.length;j++) state.relation[i][j]=1; renderRelation(); });
-        document.getElementById('batchFillMed').addEventListener('click',()=>{ for(let i=0;i<state.relation.length;i++) for(let j=0;j<state.hows.length;j++) state.relation[i][j]=3; renderRelation(); });
-        document.getElementById('batchFillStrong').addEventListener('click',()=>{ for(let i=0;i<state.relation.length;i++) for(let j=0;j<state.hows.length;j++) state.relation[i][j]=9; renderRelation(); });
         document.getElementById('loadExample').addEventListener('click',loadExampleData);
         document.getElementById('symmetryCorrFill').addEventListener('click',symmetryCorr);
-        document.getElementById('exportJSONBtn').addEventListener('click',downloadJson);
         document.getElementById('exportCSVBtn').addEventListener('click',downloadCSV);
-        document.getElementById('loadProgressBtn').addEventListener('click',()=>{ let inp=document.createElement('input'); inp.type='file'; inp.accept='application/json'; inp.onchange=e=>loadProgress(inp.files[0]); inp.click(); });
-        document.getElementById('recalcAndStay').addEventListener('click',()=>renderResults());
+        document.getElementById('pasteMatrixBtn').addEventListener('click',showPasteModal);
+        document.getElementById('excelImportBtn').addEventListener('click',()=>{ let inp=document.createElement('input'); inp.type='file'; inp.accept='.xlsx,.csv,.xls'; inp.onchange=e=>{ if(inp.files[0]) importExcelToRelation(inp.files[0],state.whats.length,state.hows.length,()=>renderRelation()); }; inp.click(); });
+        document.getElementById('pasteCorrMatrixBtn').addEventListener('click',showCorrPasteModal);
+        document.getElementById('excelCorrImportBtn').addEventListener('click',()=>{ let inp=document.createElement('input'); inp.type='file'; inp.accept='.xlsx,.csv,.xls'; inp.onchange=e=>{ if(inp.files[0]) importExcelToCorrelation(inp.files[0],state.hows.length,()=>renderCorrelation()); }; inp.click(); });
+        
+        // 全局按钮: 保存JSON和加载JSON
+        const globalSaveBtn = document.getElementById('globalSaveJsonBtn');
+        const globalLoadBtn = document.getElementById('globalLoadJsonBtn');
+        if(globalSaveBtn) globalSaveBtn.addEventListener('click', downloadJson);
+        if(globalLoadBtn) globalLoadBtn.addEventListener('click', () => { let inp = document.createElement('input'); inp.type='file'; inp.accept='application/json'; inp.onchange=e=>loadProgress(inp.files[0]); inp.click(); });
     }
+    
     function escapeHtml(str) { return String(str).replace(/[&<>]/g, function(m){if(m==='&') return '&amp;'; if(m==='<') return '&lt;'; if(m==='>') return '&gt;'; return m;});}
     function init() { syncDimensions(); renderWhats(); renderHows(); renderRelation(); renderCorrelation(); bindEvents(); updateStepUI(); }
     init();
