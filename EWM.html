@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-    <title>熵权法（EWM）小工具</title>
+    <title>熵权法（EWM）小工具 - 支持矩阵粘贴/Excel导入</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600&family=Georgia,serif&display=swap" rel="stylesheet">
     <style>
         * {
@@ -250,7 +250,40 @@
             color: #1e5a3a;
             font-size: 0.85rem;
         }
-
+        /* 模态框样式 */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+        .modal-container {
+            background: white;
+            border-radius: 28px;
+            max-width: 650px;
+            width: 90%;
+            padding: 1.8rem;
+            box-shadow: 0 20px 35px rgba(0,0,0,0.2);
+        }
+        .modal-container textarea {
+            width: 100%;
+            font-family: monospace;
+            font-size: 0.85rem;
+            padding: 12px;
+            border-radius: 16px;
+            border: 1px solid #cbd5e1;
+            min-height: 200px;
+            margin: 12px 0;
+        }
+        .modal-buttons {
+            display: flex;
+            gap: 12px;
+            justify-content: flex-end;
+        }
         @media (max-width: 700px) {
             .main-content { padding: 1rem; }
             input.matrix-input { width: 60px; }
@@ -299,10 +332,181 @@
         altNames: ['方案A', '方案B', '方案C'],
         numIndicators: 3,         // 指标数量
         indicatorNames: ['指标1', '指标2', '指标3'],
-        indicatorTypes: [],       // 'benefit' 或 'cost'，效益型/成本型
+        indicatorTypes: [],       // 'benefit' 或 'cost'
         decisionMatrix: [],       // numAlts x numIndicators
         stepValid: {}
     };
+
+    // ---------- 辅助函数 ----------
+    function updateMatrixAndRevalidate() {
+        recomputeStepValidAll();
+        // 如果当前步骤是矩阵输入页，则刷新视图
+        if (state.stepIdx === 1) {
+            renderCurrentStep();  // 重新渲染矩阵页
+        }
+    }
+
+    // 从二维数组导入矩阵 (行列校验)
+    function importMatrixFrom2D(matrix2D) {
+        if (!matrix2D || !matrix2D.length) return false;
+        const expectedRows = state.numAlts;
+        const expectedCols = state.numIndicators;
+        // 检查行数
+        if (matrix2D.length !== expectedRows) {
+            alert(`矩阵行数不符：当前需要 ${expectedRows} 行（方案数），导入数据 ${matrix2D.length} 行。`);
+            return false;
+        }
+        for (let i = 0; i < matrix2D.length; i++) {
+            const row = matrix2D[i];
+            if (!row || row.length !== expectedCols) {
+                alert(`第 ${i+1} 行列数不符：需要 ${expectedCols} 列（指标数），实际 ${row ? row.length : 0} 列。`);
+                return false;
+            }
+            for (let j = 0; j < row.length; j++) {
+                let val = parseFloat(row[j]);
+                if (isNaN(val) || val < 0) {
+                    alert(`第 ${i+1} 行，第 ${j+1} 列数值无效：必须为非负数字。`);
+                    return false;
+                }
+                // 存储
+                if (!state.decisionMatrix[i]) state.decisionMatrix[i] = [];
+                state.decisionMatrix[i][j] = val;
+            }
+        }
+        // 确保矩阵完整
+        for (let i = 0; i < expectedRows; i++) {
+            for (let j = 0; j < expectedCols; j++) {
+                if (state.decisionMatrix[i] === undefined || state.decisionMatrix[i][j] === undefined) {
+                    state.decisionMatrix[i][j] = 0;
+                }
+            }
+        }
+        updateMatrixAndRevalidate();
+        return true;
+    }
+
+    // 解析粘贴板文本 (tab/空格/逗号分隔)
+    function parsePastedTextToMatrix(text) {
+        const lines = text.trim().split(/\r?\n/);
+        const matrix = [];
+        for (let line of lines) {
+            if (line.trim() === "") continue;
+            // 尝试按制表符，逗号，空格分割
+            let parts;
+            if (line.includes('\t')) parts = line.split('\t');
+            else if (line.includes(',')) parts = line.split(',');
+            else parts = line.split(/\s+/);
+            const row = [];
+            for (let part of parts) {
+                let trimmed = part.trim();
+                if (trimmed === "") continue;
+                let num = parseFloat(trimmed);
+                if (isNaN(num)) {
+                    alert(`无法解析的数字: "${trimmed}"，请确保粘贴纯数字矩阵。`);
+                    return null;
+                }
+                row.push(num);
+            }
+            if (row.length > 0) matrix.push(row);
+        }
+        if (matrix.length === 0) return null;
+        return matrix;
+    }
+
+    // 显示粘贴模态框
+    function showPasteModal() {
+        const modalDiv = document.createElement('div');
+        modalDiv.className = 'modal-overlay';
+        modalDiv.innerHTML = `
+            <div class="modal-container">
+                <h3 style="margin-bottom: 8px;">📋 粘贴矩阵数据</h3>
+                <p style="font-size:0.8rem; color:#475569;">粘贴 ${state.numAlts} 行 × ${state.numIndicators} 列数值（支持制表符、逗号、空格分隔）。示例：<br/>85 90 80<br/>70 85 88<br/>92 78 82</p>
+                <textarea id="pasteMatrixData" placeholder="例如:&#10;85 90 80&#10;70 85 88&#10;92 78 82"></textarea>
+                <div class="modal-buttons">
+                    <button class="btn" id="cancelPasteBtn">取消</button>
+                    <button class="btn btn-primary" id="confirmPasteBtn">导入矩阵</button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modalDiv);
+        const textarea = modalDiv.querySelector('#pasteMatrixData');
+        const confirmBtn = modalDiv.querySelector('#confirmPasteBtn');
+        const cancelBtn = modalDiv.querySelector('#cancelPasteBtn');
+        const closeModal = () => modalDiv.remove();
+        confirmBtn.onclick = () => {
+            const rawText = textarea.value;
+            if (!rawText.trim()) {
+                alert("请粘贴数据");
+                return;
+            }
+            const matrix = parsePastedTextToMatrix(rawText);
+            if (matrix && importMatrixFrom2D(matrix)) {
+                closeModal();
+            }
+        };
+        cancelBtn.onclick = closeModal;
+        modalDiv.addEventListener('click', (e) => { if (e.target === modalDiv) closeModal(); });
+    }
+
+    // Excel导入 (基于SheetJS库需动态加载)
+    function importExcelFile(file) {
+        // 动态加载xlsx库
+        if (typeof XLSX === 'undefined') {
+            const script = document.createElement('script');
+            script.src = 'https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js';
+            script.onload = () => {
+                processExcelFile(file);
+            };
+            script.onerror = () => {
+                alert("加载Excel解析库失败，请检查网络后重试。");
+            };
+            document.head.appendChild(script);
+        } else {
+            processExcelFile(file);
+        }
+    }
+    
+    function processExcelFile(file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, { type: 'array' });
+            const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+            const rows = XLSX.utils.sheet_to_json(firstSheet, { header: 1, defval: "" });
+            if (!rows || rows.length === 0) {
+                alert("Excel 表格无数据");
+                return;
+            }
+            // 提取数值矩阵，跳过可能的第一行标题？用户可自行控制，我们直接提取前 numAlts 行且每行截取 numIndicators 列
+            let matrix = [];
+            for (let i = 0; i < Math.min(rows.length, state.numAlts); i++) {
+                let row = rows[i];
+                if (!row) row = [];
+                let numericRow = [];
+                for (let j = 0; j < Math.min(row.length, state.numIndicators); j++) {
+                    let val = parseFloat(row[j]);
+                    if (isNaN(val) && row[j] !== "" && row[j] !== undefined) {
+                        alert(`Excel 第${i+1}行第${j+1}列不是有效数字: ${row[j]}`);
+                        return;
+                    }
+                    numericRow.push(isNaN(val) ? 0 : val);
+                }
+                // 补齐列数
+                while (numericRow.length < state.numIndicators) numericRow.push(0);
+                matrix.push(numericRow);
+            }
+            // 补齐行数
+            while (matrix.length < state.numAlts) {
+                let filler = new Array(state.numIndicators).fill(0);
+                matrix.push(filler);
+            }
+            if (importMatrixFrom2D(matrix)) {
+                alert("Excel 数据导入成功！");
+            }
+        };
+        reader.onerror = () => alert("读取文件失败");
+        reader.readAsArrayBuffer(file);
+    }
 
     // ---------- 熵权法核心计算 ----------
     function computeEntropyWeights() {
@@ -325,12 +529,10 @@
                 } else { // cost型
                     normalized[i][j] = (maxVal - col[i]) / range;
                 }
-                // 避免0值影响熵计算（平移0.0001）
                 if (normalized[i][j] === 0) normalized[i][j] = 0.0001;
             }
         }
         
-        // 2. 计算比重矩阵 p_ij
         let p = Array(m).fill().map(() => Array(n).fill(0));
         for (let j = 0; j < n; j++) {
             let colSum = 0;
@@ -338,7 +540,6 @@
             for (let i = 0; i < m; i++) p[i][j] = normalized[i][j] / colSum;
         }
         
-        // 3. 计算熵值 e_j
         let e = Array(n).fill(0);
         for (let j = 0; j < n; j++) {
             let sum = 0;
@@ -348,14 +549,10 @@
             e[j] = - (1 / Math.log(m)) * sum;
         }
         
-        // 4. 计算差异系数 d_j = 1 - e_j
         let d = e.map(val => 1 - val);
-        
-        // 5. 计算权重 w_j
         let totalD = d.reduce((a, b) => a + b, 0);
         let weights = d.map(val => val / totalD);
         
-        // 6. 计算综合得分
         let scores = Array(m).fill(0);
         for (let i = 0; i < m; i++) {
             let score = 0;
@@ -365,15 +562,13 @@
             scores[i] = score;
         }
         
-        // 归一化得分（百分制或保留原始）
         let maxScore = Math.max(...scores);
         let minScore = Math.min(...scores);
-        let normalizedScores = scores.map(s => (s - minScore) / (maxScore - minScore) * 100);
+        let normalizedScores = scores.map(s => (maxScore === minScore) ? 50 : (s - minScore) / (maxScore - minScore) * 100);
         
         return { normalized, p, e, d, weights, scores, normalizedScores };
     }
     
-    // 验证当前步骤
     function validateCurrentStep() {
         if (state.stepIdx === 0) {
             if (state.altNames.length !== state.numAlts) return false;
@@ -406,7 +601,6 @@
         renderProgressAndSteps();
     }
     
-    // 初始化矩阵
     function initDecisionMatrix() {
         let newMat = Array(state.numAlts).fill().map(() => Array(state.numIndicators).fill(1));
         for (let i = 0; i < state.numAlts; i++) {
@@ -419,7 +613,6 @@
         state.decisionMatrix = newMat;
     }
     
-    // 更新维度的副作用
     function onDimensionsChange() {
         if (state.altNames.length !== state.numAlts) {
             let newNames = [];
@@ -488,31 +681,18 @@
         }
     }
     
-    // 步骤0：配置方案、指标名称和类型
+    // 步骤0：配置方案、指标名称和类型 (与原设计一致)
     function renderStepConfig(container) {
         container.innerHTML = `
             <div class="card">
                 <div class="step-title">📋 步骤 1 · 配置方案与评价指标</div>
-                
-                <div class="input-group">
-                    <label>📌 方案数量 (2-10):</label>
-                    <input type="number" id="altCount" min="2" max="10" value="${state.numAlts}" style="width:100px;">
-                </div>
+                <div class="input-group"><label>📌 方案数量 (2-10):</label><input type="number" id="altCount" min="2" max="10" value="${state.numAlts}" style="width:100px;"></div>
                 <div id="altNamesContainer" style="margin-bottom: 1.5rem;"></div>
-                
-                <div class="input-group">
-                    <label>📊 指标数量 (2-12):</label>
-                    <input type="number" id="indicatorCount" min="2" max="12" value="${state.numIndicators}" style="width:100px;">
-                </div>
+                <div class="input-group"><label>📊 指标数量 (2-12):</label><input type="number" id="indicatorCount" min="2" max="12" value="${state.numIndicators}" style="width:100px;"></div>
                 <div id="indicatorConfigContainer"></div>
-                
-                <div class="info-note">
-                    💡 熵权法说明：熵值越大表示信息离散程度越小，权重越低；效益型指标（数值越大越好），成本型指标（数值越小越好）。
-                </div>
+                <div class="info-note">💡 熵权法说明：熵值越大表示信息离散程度越小，权重越低；效益型指标（数值越大越好），成本型指标（数值越小越好）。</div>
             </div>
         `;
-        
-        // 方案数量变化
         const altCountInput = document.getElementById('altCount');
         altCountInput.addEventListener('change', (e) => {
             let newVal = parseInt(e.target.value);
@@ -522,55 +702,17 @@
                 renderStepConfig(container);
             }
         });
-        
-        // 方案名称渲染
         function renderAltNames() {
             const containerDiv = document.getElementById('altNamesContainer');
-            containerDiv.innerHTML = `<div style="font-weight:500; margin: 8px 0 6px;">📋 方案名称</div>
-                <div class="name-grid" style="display:flex; flex-wrap:wrap; gap:12px;">${state.altNames.map((n, idx) => `
-                    <div><label>方案 ${idx+1}:</label><input type="text" value="${n.replace(/"/g, '&quot;')}" data-idx="${idx}" class="alt-name-input" style="width:100px;"></div>
-                `).join('')}</div>`;
-            document.querySelectorAll('.alt-name-input').forEach(inp => {
-                inp.addEventListener('change', (e) => {
-                    let idx = parseInt(e.target.dataset.idx);
-                    state.altNames[idx] = e.target.value;
-                    recomputeStepValidAll();
-                });
-            });
+            containerDiv.innerHTML = `<div style="font-weight:500; margin: 8px 0 6px;">📋 方案名称</div><div class="name-grid" style="display:flex; flex-wrap:wrap; gap:12px;">${state.altNames.map((n, idx) => `<div><label>方案 ${idx+1}:</label><input type="text" value="${n.replace(/"/g, '&quot;')}" data-idx="${idx}" class="alt-name-input" style="width:100px;"></div>`).join('')}</div>`;
+            document.querySelectorAll('.alt-name-input').forEach(inp => inp.addEventListener('change', (e) => { let idx = parseInt(e.target.dataset.idx); state.altNames[idx] = e.target.value; recomputeStepValidAll(); }));
         }
-        
-        // 指标配置渲染
         function renderIndicators() {
             const containerDiv = document.getElementById('indicatorConfigContainer');
-            containerDiv.innerHTML = `<div style="font-weight:500; margin: 12px 0 8px;">📈 指标名称与类型</div>
-                <div style="display:flex; flex-direction:column; gap:10px;">${state.indicatorNames.map((name, idx) => `
-                    <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
-                        <span style="min-width:50px;">指标${idx+1}:</span>
-                        <input type="text" value="${name.replace(/"/g, '&quot;')}" data-idx="${idx}" class="indicator-name-input" style="width:140px;">
-                        <select data-idx="${idx}" class="indicator-type-select">
-                            <option value="benefit" ${state.indicatorTypes[idx] === 'benefit' ? 'selected' : ''}>效益型 (越大越好)</option>
-                            <option value="cost" ${state.indicatorTypes[idx] === 'cost' ? 'selected' : ''}>成本型 (越小越好)</option>
-                        </select>
-                    </div>
-                `).join('')}</div>`;
-            
-            document.querySelectorAll('.indicator-name-input').forEach(inp => {
-                inp.addEventListener('change', (e) => {
-                    let idx = parseInt(e.target.dataset.idx);
-                    state.indicatorNames[idx] = e.target.value;
-                    recomputeStepValidAll();
-                });
-            });
-            document.querySelectorAll('.indicator-type-select').forEach(sel => {
-                sel.addEventListener('change', (e) => {
-                    let idx = parseInt(e.target.dataset.idx);
-                    state.indicatorTypes[idx] = e.target.value;
-                    recomputeStepValidAll();
-                });
-            });
+            containerDiv.innerHTML = `<div style="font-weight:500; margin: 12px 0 8px;">📈 指标名称与类型</div><div style="display:flex; flex-direction:column; gap:10px;">${state.indicatorNames.map((name, idx) => `<div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;"><span style="min-width:50px;">指标${idx+1}:</span><input type="text" value="${name.replace(/"/g, '&quot;')}" data-idx="${idx}" class="indicator-name-input" style="width:140px;"><select data-idx="${idx}" class="indicator-type-select"><option value="benefit" ${state.indicatorTypes[idx] === 'benefit' ? 'selected' : ''}>效益型 (越大越好)</option><option value="cost" ${state.indicatorTypes[idx] === 'cost' ? 'selected' : ''}>成本型 (越小越好)</option></select></div>`).join('')}</div>`;
+            document.querySelectorAll('.indicator-name-input').forEach(inp => inp.addEventListener('change', (e) => { let idx = parseInt(e.target.dataset.idx); state.indicatorNames[idx] = e.target.value; recomputeStepValidAll(); }));
+            document.querySelectorAll('.indicator-type-select').forEach(sel => sel.addEventListener('change', (e) => { let idx = parseInt(e.target.dataset.idx); state.indicatorTypes[idx] = e.target.value; recomputeStepValidAll(); }));
         }
-        
-        // 指标数量变化
         const indicatorCountInput = document.getElementById('indicatorCount');
         indicatorCountInput.addEventListener('change', (e) => {
             let newVal = parseInt(e.target.value);
@@ -580,40 +722,41 @@
                 renderStepConfig(container);
             }
         });
-        
         renderAltNames();
         renderIndicators();
         setTimeout(() => recomputeStepValidAll(), 20);
     }
     
-    // 步骤1：评价矩阵输入
+    // 步骤1：评价矩阵输入【新增“粘贴矩阵”和“从Excel导入”】
     function renderStepMatrix(container) {
         const m = state.numAlts;
         const n = state.numIndicators;
-        
         let html = `<div class="card"><div class="step-title">📝 步骤 2 · 评价矩阵输入</div>`;
-        html += `<div class="info-note">请填写 ${m} 个方案 × ${n} 个指标的原始数据。效益型指标（数值越大越好），成本型指标（数值越小越好）。</div>`;
+        html += `<div class="info-note">请填写 ${m} 个方案 × ${n} 个指标的原始数据。效益型（↑越大越好），成本型（↓越小越好）。</div>`;
         html += `<div class="table-wrapper" style="overflow-x:auto;"><table><thead><tr><th>方案 \\ 指标</th>`;
         for (let j = 0; j < n; j++) {
             let typeIcon = state.indicatorTypes[j] === 'benefit' ? '↑' : '↓';
             html += `<th>${state.indicatorNames[j]} ${typeIcon}</th>`;
         }
         html += `</tr></thead><tbody>`;
-        
         for (let i = 0; i < m; i++) {
             html += `<tr><th style="background:#f1f5f9;">${state.altNames[i]}</th>`;
             for (let j = 0; j < n; j++) {
-                let val = state.decisionMatrix[i]?.[j] !== undefined ? state.decisionMatrix[i][j] : '';
+                let val = (state.decisionMatrix[i]?.[j] !== undefined && state.decisionMatrix[i][j] !== null) ? state.decisionMatrix[i][j] : '';
                 html += `<td><input class="matrix-input" type="number" step="any" value="${val}" data-i="${i}" data-j="${j}" style="width:90px;"></td>`;
             }
             html += `</tr>`;
         }
         html += `</tbody></table></div>`;
-        html += `<div class="button-group"><button class="btn-outline btn" id="exampleFillBtn">📋 示例填充（方案/指标数据）</button></div></div>`;
-        
+        // 按钮组：示例填充 + 粘贴矩阵 + 从Excel导入
+        html += `<div class="button-group"><button class="btn-outline btn" id="exampleFillBtn">📋 示例填充</button>
+                 <button class="btn-outline btn" id="pasteMatrixBtn">📋 粘贴矩阵</button>
+                 <button class="btn-outline btn" id="excelImportBtn">📎 从Excel导入</button>
+                 <input type="file" id="excelFileInput" accept=".xlsx, .xls, .csv" style="display:none;" />
+                </div></div>`;
         container.innerHTML = html;
         
-        // 绑定输入事件
+        // 绑定矩阵输入事件
         document.querySelectorAll('.matrix-input').forEach(inp => {
             inp.addEventListener('change', (e) => {
                 let i = parseInt(inp.dataset.i);
@@ -622,109 +765,57 @@
                 if (!isNaN(val) && val >= 0) {
                     if (!state.decisionMatrix[i]) state.decisionMatrix[i] = [];
                     state.decisionMatrix[i][j] = val;
-                    recomputeStepValidAll();
                 } else if (inp.value === '') {
-                    // 未填不算有效
                     if (!state.decisionMatrix[i]) state.decisionMatrix[i] = [];
                     state.decisionMatrix[i][j] = undefined;
-                    recomputeStepValidAll();
                 }
+                recomputeStepValidAll();
             });
         });
-        
-        // 示例填充
-        const exampleBtn = document.getElementById('exampleFillBtn');
-        if (exampleBtn) {
-            exampleBtn.onclick = () => {
-                // 示例数据：3方案×3指标
-                if (state.numAlts === 3 && state.numIndicators === 3) {
-                    state.decisionMatrix = [
-                        [85, 90, 80],
-                        [70, 85, 88],
-                        [92, 78, 82]
-                    ];
-                } else {
-                    // 动态生成随机数据
-                    let newMat = [];
-                    for (let i = 0; i < state.numAlts; i++) {
-                        let row = [];
-                        for (let j = 0; j < state.numIndicators; j++) {
-                            row.push(Math.floor(Math.random() * 80) + 20);
-                        }
-                        newMat.push(row);
-                    }
-                    state.decisionMatrix = newMat;
+        document.getElementById('exampleFillBtn').onclick = () => {
+            let newMat = [];
+            for (let i = 0; i < state.numAlts; i++) {
+                let row = [];
+                for (let j = 0; j < state.numIndicators; j++) {
+                    row.push(Math.floor(Math.random() * 80) + 20);
                 }
-                renderStepMatrix(container);
-            };
-        }
+                newMat.push(row);
+            }
+            state.decisionMatrix = newMat;
+            renderStepMatrix(container);
+        };
+        document.getElementById('pasteMatrixBtn').onclick = () => showPasteModal();
+        const excelImportBtn = document.getElementById('excelImportBtn');
+        const excelFileInput = document.getElementById('excelFileInput');
+        excelImportBtn.onclick = () => excelFileInput.click();
+        excelFileInput.onchange = (e) => {
+            const file = e.target.files[0];
+            if (file) importExcelFile(file);
+            excelFileInput.value = '';
+        };
     }
     
-    // 步骤2：结果展示
+    // 步骤2：结果展示 (保持不变)
     function renderStepResult(container) {
         const result = computeEntropyWeights();
-        
         let html = `<div class="card"><div class="step-title">🎯 步骤 3 · 熵权法计算结果</div>`;
-        
-        // 权重表格
-        html += `<h3 style="margin: 1rem 0 0.5rem;">📊 指标权重</h3>
-        <table><thead><tr><th>指标</th><th>熵值 eⱼ</th><th>差异系数 dⱼ</th><th>权重 wⱼ</th></tr></thead><tbody>`;
+        html += `<h3 style="margin: 1rem 0 0.5rem;">📊 指标权重</h3><table><thead><tr><th>指标</th><th>熵值 eⱼ</th><th>差异系数 dⱼ</th><th>权重 wⱼ</th></tr></thead><tbody>`;
         for (let j = 0; j < state.numIndicators; j++) {
-            html += `<tr>
-                <td><strong>${state.indicatorNames[j]}</strong> ${state.indicatorTypes[j] === 'benefit' ? '(↑)' : '(↓)'}</td>
-                <td>${result.e[j].toFixed(6)}</td>
-                <td>${result.d[j].toFixed(6)}</td>
-                <td class="highlight">${(result.weights[j] * 100).toFixed(2)}%</td>
-            </tr>`;
+            html += `<tr><td><strong>${state.indicatorNames[j]}</strong> ${state.indicatorTypes[j] === 'benefit' ? '(↑)' : '(↓)'}</td><td>${result.e[j].toFixed(6)}</td><td>${result.d[j].toFixed(6)}</td><td class="highlight">${(result.weights[j] * 100).toFixed(2)}%</td></tr>`;
         }
-        html += `</tbody></table>`;
-        
-        // 方案综合得分排序
+        html += `</tbody></table><h3 style="margin: 1.5rem 0 0.5rem;">🏆 方案综合得分与排序</h3><table><thead><tr><th>排序</th><th>方案</th><th>归一化得分 (0-100)</th><th>原始综合得分</th></tr></thead><tbody>`;
         let sorted = state.altNames.map((name, idx) => ({ name, score: result.normalizedScores[idx], rawScore: result.scores[idx] }));
         sorted.sort((a, b) => b.score - a.score);
-        
-        html += `<h3 style="margin: 1.5rem 0 0.5rem;">🏆 方案综合得分与排序</h3>
-        <table><thead><tr><th>排序</th><th>方案</th><th>归一化得分 (0-100)</th><th>原始综合得分</th></tr></thead><tbody>`;
         for (let rank = 0; rank < sorted.length; rank++) {
             let isBest = rank === 0;
-            html += `<tr>
-                <td>${rank + 1}</td>
-                <td>${sorted[rank].name} ${isBest ? '🥇' : ''}</td>
-                <td class="${isBest ? 'highlight' : ''}">${sorted[rank].score.toFixed(2)}</td>
-                <td>${sorted[rank].rawScore.toFixed(6)}</td>
-            </tr>`;
+            html += `<tr><td>${rank + 1}</td><td>${sorted[rank].name} ${isBest ? '🥇' : ''}</td><td class="${isBest ? 'highlight' : ''}">${sorted[rank].score.toFixed(2)}</td><td>${sorted[rank].rawScore.toFixed(6)}</td></tr>`;
         }
-        html += `</tbody></table>`;
-        
-        // 解释模块
-        let best = sorted[0];
-        let worst = sorted[sorted.length - 1];
-        html += `<div class="result-box">
-            <strong>📖 结果解释模块</strong><br>
-            根据熵权法计算，${state.numIndicators} 个指标的权重分布如上表所示。权重最高的指标是 <strong>“${state.indicatorNames[result.weights.indexOf(Math.max(...result.weights))]}”</strong>，说明该指标的数据离散程度最大，提供的信息量最多。<br><br>
-            综合得分最高的方案为 <strong>“${best.name}”</strong>（得分 ${best.score.toFixed(2)} 分），得分最低的方案为 “${worst.name}”。熵权法完全基于数据自身特征，适用于多指标客观评价场景。
-        </div>`;
-        
-        // 注意熵值说明
-        html += `<div class="info-note">
-            💡 熵权法原理：熵值接近1时表示指标数据离散程度小，信息量少，权重低；熵值远离1时权重高。
-        </div>`;
-        
+        html += `</tbody></table><div class="result-box"><strong>📖 结果解释模块</strong><br>熵权法基于数据离散程度，权重最高的指标是 <strong>“${state.indicatorNames[result.weights.indexOf(Math.max(...result.weights))]}”</strong>。最佳方案为 <strong>“${sorted[0].name}”</strong>（得分 ${sorted[0].score.toFixed(2)} 分）。</div><div class="info-note">💡 熵值接近1时指标信息量少权重低，反之权重高。</div>`;
         container.innerHTML = html;
     }
     
-    // 保存/加载功能
     function saveToJSON() {
-        const dump = {
-            version: 1,
-            numAlts: state.numAlts,
-            altNames: state.altNames,
-            numIndicators: state.numIndicators,
-            indicatorNames: state.indicatorNames,
-            indicatorTypes: state.indicatorTypes,
-            decisionMatrix: state.decisionMatrix,
-            stepIdx: state.stepIdx
-        };
+        const dump = { version: 1, numAlts: state.numAlts, altNames: state.altNames, numIndicators: state.numIndicators, indicatorNames: state.indicatorNames, indicatorTypes: state.indicatorTypes, decisionMatrix: state.decisionMatrix, stepIdx: state.stepIdx };
         const dataStr = JSON.stringify(dump, null, 2);
         const blob = new Blob([dataStr], { type: 'application/json' });
         const a = document.createElement('a');
@@ -745,12 +836,9 @@
             state.stepIdx = jsonObj.stepIdx;
             onDimensionsChange();
             renderCurrentStep();
-        } catch (e) {
-            alert("加载失败: 文件格式错误");
-        }
+        } catch (e) { alert("加载失败: 文件格式错误"); }
     }
     
-    // 初始化
     function init() {
         state.numAlts = 3;
         state.altNames = ['方案A', '方案B', '方案C'];
@@ -763,37 +851,18 @@
         renderCurrentStep();
     }
     
-    // 绑定全局按钮
     document.getElementById('saveProgressBtn').onclick = () => saveToJSON();
     document.getElementById('loadProgressBtn').onclick = () => document.getElementById('loadFileInput').click();
     document.getElementById('loadFileInput').onchange = (e) => {
         const file = e.target.files[0];
         if (!file) return;
         const reader = new FileReader();
-        reader.onload = ev => {
-            try {
-                loadFromJSON(JSON.parse(ev.target.result));
-            } catch (e) {
-                alert("无效JSON");
-            }
-        };
+        reader.onload = ev => { try { loadFromJSON(JSON.parse(ev.target.result)); } catch(e) { alert("无效JSON"); } };
         reader.readAsText(file);
         e.target.value = '';
     };
-    document.getElementById('nextStepBtn').onclick = () => {
-        if (state.stepIdx + 1 < 3) {
-            state.stepIdx++;
-            renderCurrentStep();
-        } else {
-            alert("已完成所有步骤，可在结果页查看熵权法计算结果");
-        }
-    };
-    document.getElementById('prevStepBtn').onclick = () => {
-        if (state.stepIdx > 0) {
-            state.stepIdx--;
-            renderCurrentStep();
-        }
-    };
+    document.getElementById('nextStepBtn').onclick = () => { if (state.stepIdx + 1 < 3) { state.stepIdx++; renderCurrentStep(); } else { alert("已完成所有步骤"); } };
+    document.getElementById('prevStepBtn').onclick = () => { if (state.stepIdx > 0) { state.stepIdx--; renderCurrentStep(); } };
     
     init();
 </script>
